@@ -18,10 +18,9 @@ cancel-in-progress: true
 jobs:
 deploy:
 runs-on: ubuntu-latest
-
 environment:
-  name: github-pages
-  url: ${{ steps.deployment.outputs.page_url }}
+name: github-pages
+url: ${{ steps.deployment.outputs.page_url }}
 
 steps:
   - name: Checkout repository
@@ -29,25 +28,18 @@ steps:
 
   - name: Verify ZIP file
     run: |
-      echo "Checking updated TRUST AI archive..."
-      if [ ! -f "TRUST-AI-v1.2-fixed-1.zip" ]; then
-        echo "ERROR: ZIP file not found in repository root."
-        ls -la
-        exit 1
-      fi
-      echo "ZIP file found successfully."
-
-  - name: Extract updated TRUST AI files
-    run: |
-      unzip -o -q "TRUST-AI-v1.2-fixed-1.zip" \
-        -x ".github/*" "README.md" "LICENSE"
-      touch .nojekyll
-      echo "Extracted files:"
       ls -la
-      test -f index.html || {
-        echo "ERROR: index.html not found after extraction."
+      test -f "TRUST-AI-v1.2-fixed.zip" || {
+        echo "ZIP file not found"
         exit 1
       }
+
+  - name: Unzip app files
+    run: |
+      unzip -o -q "TRUST-AI-v1.2-fixed.zip" -x ".github/*" "README.md" "LICENSE"
+      touch .nojekyll
+      test -f index.html || exit 1
+      echo "Unzip completed successfully"
 
   - name: Commit extracted files
     run: |
@@ -55,10 +47,8 @@ steps:
       git config user.email "github-actions[bot]@users.noreply.github.com"
       git add -A
       if ! git diff --cached --quiet; then
-        git commit -m "Update TRUST AI to v1.2"
+        git commit -m "Update TRUST AI from ZIP"
         git push
-      else
-        echo "No extracted file changes to commit."
       fi
 
   - name: Configure GitHub Pages
