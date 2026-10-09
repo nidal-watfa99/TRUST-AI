@@ -3,24 +3,54 @@
  * Privacy-first: API keys live only in memory / sessionStorage.
  * Never hardcoded. Never sent to any TRUST AI server.
  * Supports free & paid providers via official endpoints.
- * Enhanced for strong pyramid / network marketing detection.
+ * Updated Oct 2026: only currently available free models + ONE paid model.
+ * Enhanced with strong pyramid / network marketing detection (QuestNet / QNET style).
  */
 
 const FREE_MODELS = [
-  { id: "groq-llama", name: "Groq — Llama 3.3 70B (Free tier)", provider: "groq", model: "llama-3.3-70b-versatile",
-    officialUrl: "https://console.groq.com/keys", docs: "https://console.groq.com/docs/models", free: true, vision: false },
-  { id: "groq-vision", name: "Groq — Llama 4 Scout + Vision (Free tier)", provider: "groq", model: "meta-llama/llama-4-scout-17b-16e-instruct",
-    officialUrl: "https://console.groq.com/keys", docs: "https://console.groq.com/docs/models", free: true, vision: true },
-  { id: "gemini-flash", name: "Google Gemini Flash — latest (Free tier)", provider: "gemini", model: "gemini-flash-latest",
-    officialUrl: "https://aistudio.google.com/apikey", docs: "https://ai.google.dev/gemini-api/docs", free: true, vision: true },
-  { id: "gemini-pro", name: "Google Gemini Pro — latest", provider: "gemini", model: "gemini-pro-latest",
-    officialUrl: "https://aistudio.google.com/apikey", docs: "https://ai.google.dev/gemini-api/docs", free: true, vision: true },
-  { id: "openrouter-free", name: "OpenRouter — Llama 3.3 70B (Free)", provider: "openrouter", model: "meta-llama/llama-3.3-70b-instruct:free",
-    officialUrl: "https://openrouter.ai/keys", docs: "https://openrouter.ai/docs", free: true, vision: false },
-  { id: "openai-gpt4o-mini", name: "OpenAI GPT-4o mini (Paid)", provider: "openai", model: "gpt-4o-mini",
-    officialUrl: "https://platform.openai.com/api-keys", docs: "https://platform.openai.com/docs", free: false, vision: true },
-  { id: "openai-gpt4o", name: "OpenAI GPT-4o (Paid + Vision)", provider: "openai", model: "gpt-4o",
-    officialUrl: "https://platform.openai.com/api-keys", docs: "https://platform.openai.com/docs", free: false, vision: true },
+  // ── Free (Groq) — current free tier ──────────────────────────
+  { id: "groq-gpt-oss-120b", name: "Groq — GPT-OSS 120B (Free)", provider: "groq",
+    model: "openai/gpt-oss-120b",
+    officialUrl: "https://console.groq.com/keys", docs: "https://console.groq.com/docs/models",
+    free: true, vision: false },
+  { id: "groq-gpt-oss-20b", name: "Groq — GPT-OSS 20B (Free, أسرع)", provider: "groq",
+    model: "openai/gpt-oss-20b",
+    officialUrl: "https://console.groq.com/keys", docs: "https://console.groq.com/docs/models",
+    free: true, vision: false },
+  { id: "groq-qwen", name: "Groq — Qwen3.8 27B (Free)", provider: "groq",
+    model: "qwen/qwen3.8-27b",
+    officialUrl: "https://console.groq.com/keys", docs: "https://console.groq.com/docs/models",
+    free: true, vision: false },
+
+  // ── Free (Google Gemini) ─────────────────────────────────────
+  { id: "gemini-flash", name: "Gemini Flash (Free tier)", provider: "gemini",
+    model: "gemini-flash-latest",
+    officialUrl: "https://aistudio.google.com/apikey", docs: "https://ai.google.dev/gemini-api/docs",
+    free: true, vision: true },
+  { id: "gemini-flash-lite", name: "Gemini Flash-Lite (Free, أسرع وأخف)", provider: "gemini",
+    model: "gemini-flash-lite-latest",
+    officialUrl: "https://aistudio.google.com/apikey", docs: "https://ai.google.dev/gemini-api/docs",
+    free: true, vision: true },
+
+  // ── Free (OpenRouter) ────────────────────────────────────────
+  { id: "openrouter-nemotron", name: "OpenRouter — Nemotron 3 Super (Free)", provider: "openrouter",
+    model: "nvidia/nemotron-3-super-120b-a12b:free",
+    officialUrl: "https://openrouter.ai/keys", docs: "https://openrouter.ai/docs",
+    free: true, vision: false },
+  { id: "openrouter-gemma", name: "OpenRouter — Gemma 4 31B (Free + Vision)", provider: "openrouter",
+    model: "google/gemma-4-31b-it:free",
+    officialUrl: "https://openrouter.ai/keys", docs: "https://openrouter.ai/docs",
+    free: true, vision: true },
+  { id: "openrouter-free-router", name: "OpenRouter — Auto Free Router", provider: "openrouter",
+    model: "openrouter/free",
+    officialUrl: "https://openrouter.ai/keys", docs: "https://openrouter.ai/docs",
+    free: true, vision: true },
+
+  // ── ONLY ONE PAID MODEL ──────────────────────────────────────
+  { id: "openai-gpt4o", name: "OpenAI GPT-4o (Paid + Vision) — الوحيد المدفوع", provider: "openai",
+    model: "gpt-4o",
+    officialUrl: "https://platform.openai.com/api-keys", docs: "https://platform.openai.com/docs",
+    free: false, vision: true },
 ];
 
 const state = {
@@ -32,7 +62,7 @@ const state = {
   visionCapable: false,
 };
 
-const SYSTEM_PROMPT = `You are TRUST AI, a highly specialized digital safety and anti-fraud analyst. Your primary mission is to protect people — especially those in difficult economic situations — from scams, phishing, and particularly pyramid / multi-level marketing schemes.
+const SYSTEM_PROMPT = `You are TRUST AI, a highly specialized digital safety and anti-fraud analyst. Your primary mission is to protect people — especially those in difficult economic situations — from scams, phishing, crypto fraud, fake news, and particularly pyramid / multi-level marketing schemes.
 
 You must be extremely sensitive to pyramid scheme patterns. These schemes caused massive harm in Syria and similar countries by exploiting poverty.
 
@@ -46,7 +76,14 @@ Classic pyramid scheme red flags you must detect aggressively:
 - Use of emotional language: "change your life", "this is your only chance", "passive income", "financial freedom"
 - Mentions of companies known for pyramid schemes such as QuestNet, QNET, كويست نت, كيونت, QI Group, GoldQuest
 
-When you detect these patterns, you must give a HIGH or SEVERE score (usually 75–100) and clearly name it as a pyramid / network marketing scam.
+Also detect strongly:
+- Crypto airdrops, pump-and-dump, seed phrase requests
+- Inheritance / bank manager / relative died scams
+- Lottery / World Cup / prize claims requiring fees
+- Telegram / X investment groups and fake signals
+- Fake news designed to create panic
+
+When you detect pyramid or high-risk patterns, give a HIGH or SEVERE score (usually 75–100) and clearly name it.
 
 Respond ONLY with valid JSON (no markdown, no extra text):
 {
@@ -72,10 +109,10 @@ function friendlyError(status, body, provider) {
   try { const j = JSON.parse(body); msg = j.error?.message || j[0]?.error?.message || ""; } catch (_) {}
   msg = (msg || body || "").toString().slice(0, 160);
   const hint = {
-    400: "طلب غير صالح — غالباً اسم النموذج غير مدعوم. جرّب إدخال اسم نموذج آخر في خانة «نموذج مخصص».",
-    401: "المفتاح مرفوض. تأكد أنه من نفس المزوّد المختار (مفتاح Groq لا يعمل مع Gemini).",
+    400: "طلب غير صالح — اسم النموذج غير مدعوم حاليًا. اختر نموذجًا آخر من القائمة.",
+    401: "المفتاح مرفوض. تأكد أنه من نفس المزوّد المختار.",
     403: "المفتاح لا يملك صلاحية لهذا النموذج أو المنطقة غير مدعومة.",
-    404: "النموذج غير موجود أو أُوقف. أدخل اسماً حديثاً في «نموذج مخصص».",
+    404: "النموذج غير موجود أو أُوقف. اختر نموذجًا آخر من القائمة.",
     429: "تجاوزت حد الاستخدام المجاني. انتظر قليلاً أو بدّل النموذج.",
   }[status] || "خطأ من المزوّد.";
   return `[${provider} ${status}] ${hint} ${msg}`.trim();
