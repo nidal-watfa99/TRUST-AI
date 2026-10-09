@@ -440,22 +440,36 @@ function closeSettings() {
   document.body.style.overflow = "";
 }
 
-function onSaveAI() {
+function showAIResult(ok, msg) {
+  const box = $("#ai-test-result");
+  if (!box) return;
+  box.classList.remove("hidden");
+  box.classList.toggle("ok", !!ok);
+  box.classList.toggle("bad", !ok);
+  box.textContent = msg;
+}
+
+async function onSaveAI() {
   const key = ($("#ai-key")?.value || "").trim();
   const modelId = $("#ai-model")?.value;
+  const customModel = ($("#ai-custom-model")?.value || "").trim();
   if (!key || key.length < 8) {
-    showToast(t("error_generic"), true);
+    showAIResult(false, getLang() === "ar" ? "الصق مفتاح API صالحاً أولاً." : "Paste a valid API key first.");
     return;
   }
-  const ok = initAIProvider({ apiKey: key, modelId });
-  // Clear the visible field immediately for privacy
-  if ($("#ai-key")) $("#ai-key").value = "";
+  initAIProvider({ apiKey: key, modelId, customModel });
+  showAIResult(true, getLang() === "ar" ? "جارٍ اختبار الاتصال…" : "Testing connection…");
+  const res = await testConnection();
   updateAIStatusUI();
-  if (ok) {
+  if (res.ok) {
+    if ($("#ai-key")) $("#ai-key").value = "";
+    showAIResult(true, t("connectionOk"));
     showToast(t("aiConnected"));
-    closeSettings();
+    setTimeout(closeSettings, 700);
   } else {
-    showToast(t("connectionFail"), true);
+    clearAIProvider();
+    updateAIStatusUI();
+    showAIResult(false, `${t("connectionFail")}: ${res.error || ""}`);
   }
 }
 
@@ -467,18 +481,16 @@ function onClearAI() {
 }
 
 async function onTestAI() {
-  const status = getAIStatus();
-  if (!status.available) {
-    // Try with current form values without saving permanently
-    const key = ($("#ai-key")?.value || "").trim();
-    const modelId = $("#ai-model")?.value;
-    if (key.length > 8) initAIProvider({ apiKey: key, modelId });
-  }
+  const key = ($("#ai-key")?.value || "").trim();
+  const modelId = $("#ai-model")?.value;
+  const customModel = ($("#ai-custom-model")?.value || "").trim();
+  if (key.length > 8) initAIProvider({ apiKey: key, modelId, customModel });
   const btn = $("#btn-test-ai");
   if (btn) btn.disabled = true;
+  showAIResult(true, getLang() === "ar" ? "جارٍ اختبار الاتصال…" : "Testing connection…");
   const res = await testConnection();
   if (btn) btn.disabled = false;
-  showToast(res.ok ? t("connectionOk") : `${t("connectionFail")}: ${res.error || ""}`, !res.ok);
+  showAIResult(res.ok, res.ok ? t("connectionOk") : `${t("connectionFail")}: ${res.error || ""}`);
   updateAIStatusUI();
 }
 

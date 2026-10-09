@@ -6,76 +6,20 @@
  */
 
 const FREE_MODELS = [
-  {
-    id: "groq-llama",
-    name: "Groq — Llama 3.3 70B (Free tier)",
-    provider: "groq",
-    model: "llama-3.3-70b-versatile",
-    officialUrl: "https://console.groq.com/keys",
-    docs: "https://console.groq.com/docs/models",
-    free: true,
-    vision: false,
-  },
-  {
-    id: "groq-mixtral",
-    name: "Groq — Mixtral 8x7B (Free tier)",
-    provider: "groq",
-    model: "mixtral-8x7b-32768",
-    officialUrl: "https://console.groq.com/keys",
-    docs: "https://console.groq.com/docs/models",
-    free: true,
-    vision: false,
-  },
-  {
-    id: "gemini-flash",
-    name: "Google Gemini 1.5 Flash (Free tier)",
-    provider: "gemini",
-    model: "gemini-1.5-flash",
-    officialUrl: "https://aistudio.google.com/apikey",
-    docs: "https://ai.google.dev/gemini-api/docs",
-    free: true,
-    vision: true,
-  },
-  {
-    id: "gemini-pro",
-    name: "Google Gemini 1.5 Pro (Free tier)",
-    provider: "gemini",
-    model: "gemini-1.5-pro",
-    officialUrl: "https://aistudio.google.com/apikey",
-    docs: "https://ai.google.dev/gemini-api/docs",
-    free: true,
-    vision: true,
-  },
-  {
-    id: "openrouter-free",
-    name: "OpenRouter — Free models",
-    provider: "openrouter",
-    model: "meta-llama/llama-3.2-3b-instruct:free",
-    officialUrl: "https://openrouter.ai/keys",
-    docs: "https://openrouter.ai/docs",
-    free: true,
-    vision: false,
-  },
-  {
-    id: "openai-gpt4o-mini",
-    name: "OpenAI GPT-4o mini (Paid)",
-    provider: "openai",
-    model: "gpt-4o-mini",
-    officialUrl: "https://platform.openai.com/api-keys",
-    docs: "https://platform.openai.com/docs",
-    free: false,
-    vision: true,
-  },
-  {
-    id: "openai-gpt4o",
-    name: "OpenAI GPT-4o (Paid + Vision)",
-    provider: "openai",
-    model: "gpt-4o",
-    officialUrl: "https://platform.openai.com/api-keys",
-    docs: "https://platform.openai.com/docs",
-    free: false,
-    vision: true,
-  },
+  { id: "groq-llama", name: "Groq — Llama 3.3 70B (Free tier)", provider: "groq", model: "llama-3.3-70b-versatile",
+    officialUrl: "https://console.groq.com/keys", docs: "https://console.groq.com/docs/models", free: true, vision: false },
+  { id: "groq-vision", name: "Groq — Llama 4 Scout + Vision (Free tier)", provider: "groq", model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    officialUrl: "https://console.groq.com/keys", docs: "https://console.groq.com/docs/models", free: true, vision: true },
+  { id: "gemini-flash", name: "Google Gemini Flash — latest (Free tier)", provider: "gemini", model: "gemini-flash-latest",
+    officialUrl: "https://aistudio.google.com/apikey", docs: "https://ai.google.dev/gemini-api/docs", free: true, vision: true },
+  { id: "gemini-pro", name: "Google Gemini Pro — latest", provider: "gemini", model: "gemini-pro-latest",
+    officialUrl: "https://aistudio.google.com/apikey", docs: "https://ai.google.dev/gemini-api/docs", free: true, vision: true },
+  { id: "openrouter-free", name: "OpenRouter — Llama 3.3 70B (Free)", provider: "openrouter", model: "meta-llama/llama-3.3-70b-instruct:free",
+    officialUrl: "https://openrouter.ai/keys", docs: "https://openrouter.ai/docs", free: true, vision: false },
+  { id: "openai-gpt4o-mini", name: "OpenAI GPT-4o mini (Paid)", provider: "openai", model: "gpt-4o-mini",
+    officialUrl: "https://platform.openai.com/api-keys", docs: "https://platform.openai.com/docs", free: false, vision: true },
+  { id: "openai-gpt4o", name: "OpenAI GPT-4o (Paid + Vision)", provider: "openai", model: "gpt-4o",
+    officialUrl: "https://platform.openai.com/api-keys", docs: "https://platform.openai.com/docs", free: false, vision: true },
 ];
 
 const state = {
@@ -103,6 +47,20 @@ Respond ONLY with valid JSON (no markdown, no extra text):
 
 Be precise. Prefer higher risk when uncertain about financial or credential requests. Never invent facts.`;
 
+function friendlyError(status, body, provider) {
+  let msg = "";
+  try { const j = JSON.parse(body); msg = j.error?.message || j[0]?.error?.message || ""; } catch (_) {}
+  msg = (msg || body || "").toString().slice(0, 160);
+  const hint = {
+    400: "طلب غير صالح — غالباً اسم النموذج غير مدعوم. جرّب إدخال اسم نموذج آخر في خانة «نموذج مخصص».",
+    401: "المفتاح مرفوض. تأكد أنه من نفس المزوّد المختار (مفتاح Groq لا يعمل مع Gemini).",
+    403: "المفتاح لا يملك صلاحية لهذا النموذج أو المنطقة غير مدعومة.",
+    404: "النموذج غير موجود أو أُوقف. أدخل اسماً حديثاً في «نموذج مخصص».",
+    429: "تجاوزت حد الاستخدام المجاني. انتظر قليلاً أو بدّل النموذج.",
+  }[status] || "خطأ من المزوّد.";
+  return `[${provider} ${status}] ${hint} ${msg}`.trim();
+}
+
 export function getFreeModels() {
   return FREE_MODELS.map((m) => ({ ...m }));
 }
@@ -113,7 +71,7 @@ export function initAIProvider(config = {}) {
     state.apiKey = config.apiKey;
     state.modelId = modelMeta.id;
     state.provider = modelMeta.provider;
-    state.model = modelMeta.model;
+    state.model = (config.customModel || "").trim() || modelMeta.model;
     state.visionCapable = !!modelMeta.vision;
     state.enabled = true;
     try {
@@ -162,6 +120,14 @@ export function getAIStatus() {
  * Call the selected provider. Keys never leave the browser except to the official API.
  */
 async function callProvider(messages, options = {}) {
+  try { return await callProviderInner(messages, options); }
+  catch (e) {
+    if (e instanceof TypeError) throw new Error("تعذّر الوصول إلى المزوّد: تحقق من الإنترنت، أو أن مانع الإعلانات/الـVPN لا يحجب الاتصال.");
+    throw e;
+  }
+}
+
+async function callProviderInner(messages, options = {}) {
   const { provider, model, apiKey } = state;
   if (!apiKey) throw new Error("No API key");
 
@@ -194,7 +160,7 @@ async function callProvider(messages, options = {}) {
     });
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
-      throw new Error(`AI API ${res.status}: ${errText.slice(0, 200)}`);
+      throw new Error(friendlyError(res.status, errText, provider));
     }
     const data = await res.json();
     return data.choices?.[0]?.message?.content || "";
@@ -232,7 +198,7 @@ async function callProvider(messages, options = {}) {
     });
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
-      throw new Error(`Gemini API ${res.status}: ${errText.slice(0, 200)}`);
+      throw new Error(friendlyError(res.status, errText, provider));
     }
     const data = await res.json();
     return data.candidates?.[0]?.content?.parts?.[0]?.text || "";

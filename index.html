@@ -283,8 +283,12 @@
       <label class="field-label" for="ai-model" data-i18n="modelLabel">النموذج</label>
       <select id="ai-model" class="field-select"></select>
 
+      <label class="field-label" for="ai-custom-model">نموذج مخصص (اختياري) — Custom model ID</label>
+      <input type="text" id="ai-custom-model" class="field-input" placeholder="مثال: gemini-2.5-flash" autocomplete="off" spellcheck="false" dir="ltr" />
+
       <label class="field-label" for="ai-key" data-i18n="apiKeyLabel">مفتاح API (مخفي)</label>
       <input type="password" id="ai-key" class="field-input" data-i18n-placeholder="apiKeyPlaceholder" placeholder="الصق المفتاح هنا" autocomplete="off" spellcheck="false" />
+      <div id="ai-test-result" class="ai-test-result hidden" role="status" aria-live="polite"></div>
 
       <div class="btn-row settings-btns">
         <button type="button" id="btn-save-ai" class="btn btn-primary" data-i18n="btnSaveAI">حفظ وتفعيل</button>

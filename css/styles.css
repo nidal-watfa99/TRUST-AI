@@ -1176,3 +1176,7 @@ html[dir="rtl"] .action-list li {
 .sr-checks p{margin:.15rem 0 0;color:var(--text-muted);font-size:.85rem}
 .sr-pending{flex:none;align-self:flex-start;font-size:.7rem;padding:.15rem .5rem;border-radius:999px;background:var(--medium-bg);color:var(--medium)}
 .sr-queries li{margin:.25rem 0}.sr-queries code{overflow-wrap:anywhere}
+
+.ai-test-result{margin:.5rem 0;padding:.6rem .75rem;border-radius:8px;font-size:.85rem;overflow-wrap:anywhere;line-height:1.5}
+.ai-test-result.ok{background:var(--low-bg);color:var(--low)}
+.ai-test-result.bad{background:var(--severe-bg);color:var(--severe)}
