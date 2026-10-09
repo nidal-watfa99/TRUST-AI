@@ -1,12 +1,12 @@
 name: Deploy TRUST AI
+
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -21,28 +21,17 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Verify ZIP file
-        run: |
-          ls -la
-          test -f "TRUST-AI-v1.2-fixed.zip" || exit 1
-
-      - name: Unzip app files
-        run: |
-          unzip -o -q "TRUST-AI-v1.2-fixed.zip" -x ".github/*" "README.md" "LICENSE"
-          touch .nojekyll
-          test -f index.html || exit 1
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload website files
+      - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
 
-      - name: Deploy website
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
