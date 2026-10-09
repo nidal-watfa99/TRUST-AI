@@ -1,44 +1,74 @@
-
 name: Deploy TRUST AI
+
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:
+push:
+branches:
+- main
+workflow_dispatch:
 
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+contents: write
+pages: write
+id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: true
+group: pages
+cancel-in-progress: true
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
+deploy:
+runs-on: ubuntu-latest
 
-      - name: Unzip app files
-        run: |
-          unzip -o -q TRUST-AI-v1.2-fixed.zip -x ".github/*" "README.md" "LICENSE"
-          ls -la
+environment:
+  name: github-pages
+  url: ${{ steps.deployment.outputs.page_url }}
 
-      - name: Commit extracted files
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --quiet || git commit -m "Extract TRUST AI files from zip"
-          git push
+steps:
+  - name: Checkout repository
+    uses: actions/checkout@v4
 
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-      - id: deployment
-        uses: actions/deploy-pages@v4
+  - name: Verify ZIP file
+    run: |
+      echo "Checking updated TRUST AI archive..."
+      if [ ! -f "TRUST-AI-v1.2-fixed-1.zip" ]; then
+        echo "ERROR: ZIP file not found in repository root."
+        ls -la
+        exit 1
+      fi
+      echo "ZIP file found successfully."
+
+  - name: Extract updated TRUST AI files
+    run: |
+      unzip -o -q "TRUST-AI-v1.2-fixed-1.zip" \
+        -x ".github/*" "README.md" "LICENSE"
+      touch .nojekyll
+      echo "Extracted files:"
+      ls -la
+      test -f index.html || {
+        echo "ERROR: index.html not found after extraction."
+        exit 1
+      }
+
+  - name: Commit extracted files
+    run: |
+      git config user.name "github-actions[bot]"
+      git config user.email "github-actions[bot]@users.noreply.github.com"
+      git add -A
+      if ! git diff --cached --quiet; then
+        git commit -m "Update TRUST AI to v1.2"
+        git push
+      else
+        echo "No extracted file changes to commit."
+      fi
+
+  - name: Configure GitHub Pages
+    uses: actions/configure-pages@v5
+
+  - name: Upload website files
+    uses: actions/upload-pages-artifact@v3
+    with:
+      path: .
+
+  - name: Deploy website
+    id: deployment
+    uses: actions/deploy-pages@v4
