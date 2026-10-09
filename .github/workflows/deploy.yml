@@ -24,6 +24,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Unzip the archive
+        run: |
+          unzip -o *.zip -d .
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
