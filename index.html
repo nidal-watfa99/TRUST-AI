@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="description" content="TRUST AI — تحقق قبل أن تثق. منصة موثوقة لتحليل الرسائل والروابط ولقطات الشاشة ضد الاحتيال." />
+  <meta name="theme-color" content="#0a0f1a" />
+  <meta name="robots" content="index, follow" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="TRUST AI" />
+  <title>TRUST AI — Verify before you trust</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
+  <link rel="apple-touch-icon" href="assets/icon-192.svg" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="header" role="banner">
+      <div class="header-inner">
+        <div class="logo" aria-label="TRUST AI">
+          <img src="assets/logo.svg" alt="" class="logo-img" width="28" height="28" aria-hidden="true" />
+          <span class="logo-text">TRUST AI</span>
+        </div>
+        <div class="header-actions">
+          <button type="button" id="btn-about" class="icon-btn" data-i18n-aria="btnAbout" aria-label="عن التطبيق">ⓘ</button>
+          <button type="button" id="btn-settings" class="icon-btn" data-i18n-aria="btnSettings" aria-label="Settings">⚙</button>
+          <div class="lang-switch" role="group" aria-label="Language switcher">
+            <button type="button" id="lang-ar" class="lang-btn active" data-lang="ar" aria-pressed="true">العربية</button>
+            <button type="button" id="lang-en" class="lang-btn" data-lang="en" aria-pressed="false">EN</button>
+          </div>
+        </div>
+      </div>
+      <div class="ai-status-bar">
+        <span id="ai-status-badge" class="ai-status off" data-i18n="aiDisconnected">غير متصل — يعمل بالوضع المحلي</span>
+      </div>
+      <!-- LIVE warning indicators -->
+      <div class="live-bar" role="status" aria-live="polite" aria-label="Live alert indicators">
+        <span class="live-badge" aria-hidden="true">
+          <span class="live-dot"></span>
+          <em class="live-text">LIVE</em>
+        </span>
+        <div class="live-alerts" role="group" aria-label="Risk signal lights">
+          <button type="button" id="alert-green" class="alert-btn alert-green" data-level="low" title="Low / Safe" aria-label="Green — low risk">
+            <span class="alert-core"></span>
+          </button>
+          <button type="button" id="alert-blue" class="alert-btn alert-blue" data-level="info" title="Monitoring / Info" aria-label="Blue — monitoring">
+            <span class="alert-core"></span>
+          </button>
+          <button type="button" id="alert-orange" class="alert-btn alert-orange" data-level="high" title="High warning" aria-label="Orange — high risk">
+            <span class="alert-core"></span>
+          </button>
+          <button type="button" id="alert-red" class="alert-btn alert-red" data-level="severe" title="Severe danger" aria-label="Red — severe risk">
+            <span class="alert-core"></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main" role="main">
+      <!-- HOME -->
+      <section id="view-home" class="view active" aria-labelledby="home-title">
+        <div class="hero">
+          <h1 id="home-title" class="hero-title" data-i18n="title">TRUST AI</h1>
+          <p class="hero-tagline" data-i18n="tagline">تحقق قبل أن تثق.</p>
+          <p class="hero-desc" data-i18n="description">منصّتك الموثوقة للسلامة الرقمية.</p>
+          <p class="hero-extra" data-i18n="extra">حلّل الرسائل والروابط ولقطات الشاشة قبل أن تضغط أو تدفع أو ترد أو تشارك معلوماتك.</p>
+        </div>
+
+        <div class="input-card">
+          <label for="input-text" class="sr-only" data-i18n="inputLabel">ألصق الرسالة أو الرابط هنا</label>
+          <div class="input-wrap">
+            <textarea
+              id="input-text"
+              class="input-area"
+              rows="5"
+              data-i18n-placeholder="inputPlaceholder"
+              placeholder="ألصق الرسالة أو الرابط أو الخبر هنا..."
+              aria-describedby="privacy-note"
+              maxlength="10000"
+            ></textarea>
+            <button type="button" id="btn-mic" class="mic-btn" data-i18n-aria="btnMic" aria-label="بحث صوتي" title="بحث صوتي">
+              <svg class="mic-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+              <span class="mic-pulse" aria-hidden="true"></span>
+            </button>
+          </div>
+
+          <div id="image-preview" class="image-preview hidden">
+            <img id="preview-img" alt="Screenshot preview" />
+            <button type="button" id="btn-remove-image" class="btn-remove" data-i18n="removeImage">حذف الصورة</button>
+          </div>
+
+          <p id="privacy-note" class="privacy-note" data-i18n="privacyNote">
+            لأمانك: لا ترسل كلمات المرور أو رموز OTP أو بياناتك البنكية الحقيقية.
+          </p>
+
+          <div class="btn-row">
+            <button type="button" id="btn-analyze" class="btn btn-primary" data-i18n="btnAnalyze">تحقق الآن</button>
+            <label for="file-input" id="btn-upload" class="btn btn-secondary btn-label" role="button" tabindex="0" data-i18n="btnUpload">رفع لقطة شاشة</label>
+            <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" class="sr-only" tabindex="-1" />
+          </div>
+          <p class="privacy-note" data-i18n="uploadHint">إن لم تفتح نافذة الاختيار: اسحب الصورة وأفلتها هنا، أو انسخها والصقها (Ctrl+V).</p>
+          <button type="button" id="btn-example" class="btn btn-ghost" data-i18n="btnExample">تجربة مثال</button>
+        </div>
+
+        <div class="layers-info">
+          <div class="layer-chip">① <span data-i18n="layerOffline">الطبقة 1: محرك القواعد (بدون إنترنت)</span></div>
+          <div class="layer-chip">② <span data-i18n="layerAI">الطبقة 2: نموذج الذكاء الاصطناعي</span></div>
+        </div>
+      </section>
+
+      <!-- ANALYZING -->
+      <section id="view-analyzing" class="view" aria-live="polite">
+        <div class="analyzing-box">
+          <div class="spinner" aria-hidden="true"></div>
+          <p data-i18n="analyzing">جارٍ التحليل...</p>
+        </div>
+      </section>
+
+      <!-- RESULT -->
+      <section id="view-result" class="view" aria-labelledby="result-heading">
+        <h2 id="result-heading" class="result-heading" data-i18n="resultTitle">نتيجة التحليل</h2>
+
+        <div class="score-card">
+          <div id="risk-gauge" class="risk-gauge" aria-hidden="true"></div>
+          <div class="score-meta">
+            <span id="result-score" class="score-num">—</span>
+            <span id="result-level" class="level-badge">—</span>
+            <span id="result-mode" class="mode-badge offline">—</span>
+          </div>
+        </div>
+
+        <div id="result-ai" class="ai-box hidden"></div>
+
+        <div class="result-section">
+          <h3 data-i18n="whyTitle">لماذا؟</h3>
+          <ul id="result-reasons" class="reason-list"></ul>
+        </div>
+
+        <div class="result-section">
+          <h3 data-i18n="breakdownTitle">تفصيل النقاط من الجذور</h3>
+          <div id="result-breakdown"></div>
+        </div>
+
+        <div class="result-section">
+          <h3 data-i18n="categoriesTitle">نسب الفئات</h3>
+          <div id="result-categories" class="cat-grid"></div>
+        </div>
+
+        <div class="result-section">
+          <h3 data-i18n="linksTitle">تحليل الروابط</h3>
+          <div id="result-links"></div>
+        </div>
+
+        <div class="result-section">
+          <h3 data-i18n="actionTitle">ماذا تفعل؟</h3>
+          <ul id="result-actions" class="action-list"></ul>
+        </div>
+
+        <p id="result-disclaimer" class="disclaimer" data-i18n="disclaimer"></p>
+
+        <div class="btn-row">
+          <button type="button" id="btn-source" class="btn btn-primary">📊 تقرير المصدر التفصيلي</button>
+          <button type="button" id="btn-again" class="btn btn-secondary" data-i18n="btnAgain">تحليل جديد</button>
+          <button type="button" id="btn-back" class="btn btn-secondary" data-i18n="btnBack">العودة</button>
+        </div>
+      </section>
+
+      <!-- SOURCE REPORT -->
+      <section id="view-source" class="view" aria-labelledby="source-title">
+        <h2 id="source-title" class="about-title">تقرير المصدر التفصيلي</h2>
+        <p id="source-lead" class="about-lead"></p>
+        <div id="source-body"></div>
+        <div class="btn-row">
+          <button type="button" id="btn-source-back" class="btn btn-primary">العودة للنتيجة</button>
+          <button type="button" id="btn-source-new" class="btn btn-secondary">تحليل جديد</button>
+        </div>
+      </section>
+
+      <!-- ABOUT / METHODOLOGY (صفحة الشرح الموثوق) -->
+      <section id="view-about" class="view" aria-labelledby="about-title">
+        <h2 id="about-title" class="about-title" data-i18n="aboutTitle">كيف يعمل TRUST AI؟</h2>
+        <p class="about-lead" data-i18n="aboutLead">شرح موثوق وشفاف لمنهجية التحليل — بدون وعود مبالغ فيها.</p>
+
+        <article class="about-card">
+          <h3 data-i18n="aboutWhatTitle">ما هو TRUST AI؟</h3>
+          <p data-i18n="aboutWhat">منصة مفتوحة للسلامة الرقمية تساعد على تقييم الرسائل والروابط ولقطات الشاشة قبل اتخاذ قرار قد يكون خطيراً (الضغط على رابط، إرسال أموال، مشاركة بيانات حساسة). النتيجة تقييم مخاطر وليس حكماً مطلقاً.</p>
+        </article>
+
+        <article class="about-card">
+          <h3 data-i18n="aboutLayersTitle">الطبقات المزدوجة</h3>
+          <ol class="about-list">
+            <li><strong data-i18n="aboutLayer1Title">الطبقة 1 — محرك القواعد (بدون إنترنت):</strong> <span data-i18n="aboutLayer1">يحلل النص محلياً في المتصفح وفق أنماط معروفة: الاستعجال، انتحال الهوية، طلب أموال، معلومات حساسة، روابط مشبوهة، عروض غير واقعية، وهندسة اجتماعية. لا يحتاج اتصالاً ولا مفتاحاً.</span></li>
+            <li><strong data-i18n="aboutLayer2Title">الطبقة 2 — ذكاء اصطناعي (اختياري):</strong> <span data-i18n="aboutLayer2">عند تفعيل مفتاح API من مزوّدك (Groq أو Gemini أو OpenRouter أو OpenAI)، يُضاف تحليل لغوي أعمق وتحليل صور (رؤية) إن دعم النموذج ذلك. المفتاح يبقى في ذاكرة الجلسة فقط ولا يُرسل إلى أي خادم لـ TRUST AI.</span></li>
+          </ol>
+        </article>
+
+        <article class="about-card">
+          <h3 data-i18n="aboutScoreTitle">كيف تُحسب درجة الخطورة؟</h3>
+          <p data-i18n="aboutScore">درجة من 0 إلى 100 تُبنى من فئات شفافة بأوزان ثابتة:</p>
+          <ul class="about-list">
+            <li data-i18n="aboutCatUrgency">الاستعجال والضغط — حتى 15 نقطة</li>
+            <li data-i18n="aboutCatImpersonation">انتحال الهوية — حتى 20 نقطة</li>
+            <li data-i18n="aboutCatMoney">طلب أموال — حتى 20 نقطة</li>
+            <li data-i18n="aboutCatSensitive">معلومات حساسة — حتى 20 نقطة</li>
+            <li data-i18n="aboutCatLink">مؤشرات الرابط — حتى 15 نقطة</li>
+            <li data-i18n="aboutCatUnrealistic">عروض غير واقعية — حتى 5 نقاط</li>
+            <li data-i18n="aboutCatSocial">هندسة اجتماعية — حتى 5 نقاط</li>
+          </ul>
+          <p data-i18n="aboutLevels">المستويات: 0–24 منخفض · 25–49 متوسط · 50–74 مرتفع · 75–100 شديد. إن كانت المعلومات غير كافية يظهر «يحتاج تحقق إضافي».</p>
+        </article>
+
+        <article class="about-card">
+          <h3 data-i18n="aboutLinksTitle">تحليل الروابط</h3>
+          <p data-i18n="aboutLinks">يفحص المحرك نطاقات مشبوهة، انتحال علامات تجارية، عناوين IP، روابط مختصرة، ونطاقات punycode. النتيجة مؤشر مساعدة وليست دليلاً قاطعاً على الخطر.</p>
+        </article>
+
+        <article class="about-card">
+          <h3 data-i18n="aboutPrivacyTitle">الخصوصية والحدود</h3>
+          <ul class="about-list">
+            <li data-i18n="aboutPrivacy1">لا حسابات مستخدمين ولا تخزين دائم لمحتوى رسائلك أو صورك.</li>
+            <li data-i18n="aboutPrivacy2">مفاتيح API في الذاكرة فقط وتُمسح عند إغلاق الجلسة أو إلغاء التفعيل.</li>
+            <li data-i18n="aboutPrivacy3">لا ترسل كلمات مرور أو OTP أو بيانات بنكية حقيقية إلى أي خدمة.</li>
+            <li data-i18n="aboutPrivacy4">لا يضمن أي نظام أماناً بنسبة 100%. القرار النهائي دائماً لك.</li>
+          </ul>
+        </article>
+
+        <article class="about-card about-contact">
+          <h3 data-i18n="aboutContactTitle">تواصل مع المطوّر</h3>
+          <p data-i18n="aboutContactDesc">لملاحظاتك أو اقتراحاتك أو الإبلاغ عن مشكلة، راسل المطوّر مباشرة:</p>
+          <a id="contact-email" class="contact-link" href="mailto:nidalwatfa99@gmail.com?subject=TRUST%20AI%20Feedback" target="_blank" rel="noopener">
+            nidalwatfa99@gmail.com
+          </a>
+          <p class="about-contact-hint" data-i18n="aboutContactHint">نرحب بملاحظاتكم لتحسين المنصة.</p>
+        </article>
+
+        <div class="btn-row">
+          <button type="button" id="btn-about-back" class="btn btn-primary" data-i18n="btnBack">العودة</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer" role="contentinfo">
+      <p data-i18n="footer">TRUST AI v1.0 — تحقق قبل أن تثق.</p>
+      <a href="mailto:nidalwatfa99@gmail.com?subject=TRUST%20AI%20Feedback" class="footer-contact" data-i18n="footerContact">ملاحظات للمطوّر</a>
+    </footer>
+  </div>
+
+  <!-- Examples modal -->
+  <div id="examples-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="examples-title">
+    <div id="examples-backdrop" class="modal-backdrop"></div>
+    <div class="modal-panel">
+      <div class="modal-header">
+        <h2 id="examples-title" data-i18n="examplesTitle">أمثلة تجريبية</h2>
+        <button type="button" id="examples-close" class="icon-btn" data-i18n="close">إغلاق</button>
+      </div>
+      <p class="modal-note" data-i18n="examplesNote">هذه أمثلة خيالية لأغراض التجربة فقط.</p>
+      <div id="examples-list" class="examples-list"></div>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div id="settings-backdrop" class="modal-backdrop"></div>
+    <div class="modal-panel settings-panel">
+      <div class="modal-header">
+        <h2 id="settings-title" data-i18n="settingsTitle">إعدادات الذكاء الاصطناعي (اختياري)</h2>
+        <button type="button" id="settings-close" class="icon-btn" data-i18n="close">إغلاق</button>
+      </div>
+      <p class="modal-note" data-i18n="settingsDesc">يعمل التطبيق بالكامل بدون أي مفتاح. أضف مفتاحاً مجانياً لتعزيز التحليل والصور.</p>
+
+      <label class="field-label" for="ai-model" data-i18n="modelLabel">النموذج</label>
+      <select id="ai-model" class="field-select"></select>
+
+      <label class="field-label" for="ai-key" data-i18n="apiKeyLabel">مفتاح API (مخفي)</label>
+      <input type="password" id="ai-key" class="field-input" data-i18n-placeholder="apiKeyPlaceholder" placeholder="الصق المفتاح هنا" autocomplete="off" spellcheck="false" />
+
+      <div class="btn-row settings-btns">
+        <button type="button" id="btn-save-ai" class="btn btn-primary" data-i18n="btnSaveAI">حفظ وتفعيل</button>
+        <button type="button" id="btn-test-ai" class="btn btn-secondary" data-i18n="btnTestAI">اختبار الاتصال</button>
+        <button type="button" id="btn-clear-ai" class="btn btn-ghost" data-i18n="btnClearAI">إلغاء التفعيل</button>
+      </div>
+
+      <h3 class="free-title" data-i18n="freeModelsNote">نماذج مجانية — احصل على المفتاح من الرابط الرسمي:</h3>
+      <ul id="free-models-list" class="free-models-list"></ul>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
