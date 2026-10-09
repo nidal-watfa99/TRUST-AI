@@ -3,6 +3,7 @@
  * Privacy-first: API keys live only in memory / sessionStorage.
  * Never hardcoded. Never sent to any TRUST AI server.
  * Supports free & paid providers via official endpoints.
+ * Enhanced for strong pyramid / network marketing detection.
  */
 
 const FREE_MODELS = [
@@ -31,21 +32,40 @@ const state = {
   visionCapable: false,
 };
 
-const SYSTEM_PROMPT = `You are TRUST AI, a digital safety analyst. Analyze the user message or image for phishing, scams, social engineering, and fraud risk.
+const SYSTEM_PROMPT = `You are TRUST AI, a highly specialized digital safety and anti-fraud analyst. Your primary mission is to protect people — especially those in difficult economic situations — from scams, phishing, and particularly pyramid / multi-level marketing schemes.
+
+You must be extremely sensitive to pyramid scheme patterns. These schemes caused massive harm in Syria and similar countries by exploiting poverty.
+
+Classic pyramid scheme red flags you must detect aggressively:
+- Promise of quick extreme wealth or becoming a millionaire in a few months
+- Requirement to pay a high registration fee (especially around 1500–2000 USD)
+- Obligation to recruit a specific number of people (especially 3 people from family or friends)
+- Strict secrecy: forbidding the person from telling even closest family members
+- Impossible conditions to withdraw money (must recruit more people endlessly)
+- Pressure to sell house, land, gold, or go into debt
+- Use of emotional language: "change your life", "this is your only chance", "passive income", "financial freedom"
+- Mentions of companies known for pyramid schemes such as QuestNet, QNET, كويست نت, كيونت, QI Group, GoldQuest
+
+When you detect these patterns, you must give a HIGH or SEVERE score (usually 75–100) and clearly name it as a pyramid / network marketing scam.
 
 Respond ONLY with valid JSON (no markdown, no extra text):
 {
   "score": <0-100 integer>,
   "level": "low"|"medium"|"high"|"severe",
-  "summary": "<1-2 sentence summary in the same language as the input>",
+  "summary": "<1-3 sentence clear summary in the same language as the input. Be direct and protective>",
   "indicators": [
-    {"category": "<urgency|impersonation|money|sensitive|link|unrealistic|socialEngineering|other>", "detail": "<short explanation>", "severity": <1-10>}
+    {"category": "<urgency|impersonation|money|sensitive|link|unrealistic|socialEngineering|pyramid|other>", "detail": "<short clear explanation>", "severity": <1-10>}
   ],
-  "actions": ["<short recommended action>", ...],
+  "actions": ["<short recommended action in the same language>", ...],
   "confidence": <0-100>
 }
 
-Be precise. Prefer higher risk when uncertain about financial or credential requests. Never invent facts.`;
+Rules:
+- Prefer higher risk when there is any sign of recruitment + money + secrecy + unrealistic income.
+- If the message matches classic QuestNet-style tactics, score should almost always be 85 or higher.
+- Never invent facts.
+- Be protective and clear in the summary. People need strong warnings.
+- Always respond in the same language as the user's input (Arabic or English).`;
 
 function friendlyError(status, body, provider) {
   let msg = "";
@@ -77,7 +97,6 @@ export function initAIProvider(config = {}) {
     try {
       sessionStorage.setItem("trustai_ai", JSON.stringify({
         modelId: state.modelId,
-        // key intentionally NOT persisted to storage for privacy; only memory
       }));
     } catch (_) {}
     return true;
@@ -116,9 +135,6 @@ export function getAIStatus() {
   };
 }
 
-/**
- * Call the selected provider. Keys never leave the browser except to the official API.
- */
 async function callProvider(messages, options = {}) {
   try { return await callProviderInner(messages, options); }
   catch (e) {
@@ -167,7 +183,7 @@ async function callProviderInner(messages, options = {}) {
   }
 
   if (provider === "gemini") {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/\( {model}:generateContent?key= \){encodeURIComponent(apiKey)}`;
     const parts = [];
     for (const msg of messages) {
       if (msg.role === "system") continue;
@@ -184,7 +200,6 @@ async function callProviderInner(messages, options = {}) {
         }
       }
     }
-    // Prepend system as first text
     const sys = messages.find((m) => m.role === "system");
     if (sys) parts.unshift({ text: sys.content });
 
@@ -209,7 +224,6 @@ async function callProviderInner(messages, options = {}) {
 
 function parseAIJson(raw) {
   try {
-    // strip possible markdown fences
     const cleaned = raw.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
     return JSON.parse(cleaned);
   } catch {
@@ -217,14 +231,10 @@ function parseAIJson(raw) {
   }
 }
 
-/**
- * Analyze text with AI (enhancement layer).
- * Returns null if AI unavailable or fails — Risk Engine remains source of truth.
- */
 export async function analyzeWithAI(text, engineResult) {
   if (!isAIAvailable()) return null;
 
-  const userContent = `Analyze this message for fraud/phishing risk.
+  const userContent = `Analyze this message for fraud/phishing risk, with special attention to pyramid and network marketing schemes.
 
 Message:
 """
@@ -263,16 +273,13 @@ Respond with JSON only.`;
   }
 }
 
-/**
- * Analyze image with vision-capable model.
- */
 export async function analyzeImageWithAI(imageDataUrl, textHint = "") {
   if (!isVisionAvailable()) return null;
 
   const content = [
     {
       type: "text",
-      text: `Analyze this screenshot/image for phishing, scams, or fraud indicators.
+      text: `Analyze this screenshot/image for phishing, scams, or fraud indicators, especially pyramid schemes.
 ${textHint ? "User note: " + textHint.slice(0, 500) : ""}
 Extract any visible text (OCR) and assess risk. Respond with JSON only.`,
     },
@@ -309,9 +316,6 @@ Extract any visible text (OCR) and assess risk. Respond with JSON only.`,
   }
 }
 
-/**
- * Quick connectivity test (does not send user content).
- */
 export async function testConnection() {
   if (!isAIAvailable()) return { ok: false, error: "AI not configured" };
   try {
