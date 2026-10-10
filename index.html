@@ -6,14 +6,53 @@
   <meta name="description" content="TRUST AI — تحقق قبل أن تثق. منصة موثوقة لتحليل الرسائل والروابط ولقطات الشاشة ضد الاحتيال." />
   <meta name="theme-color" content="#0a0f1a" />
   <meta name="robots" content="index, follow" />
+  <!-- Anti-clickjacking: hidden until js/guard.js proves this is the top-level window
+       (GitHub Pages cannot send frame-ancestors / X-Frame-Options). -->
+  <style id="anti-clickjack">html{display:none !important}</style>
+  <noscript><style>html{display:block !important}</style></noscript>
+  <script src="js/guard.js"></script>
+  <!-- Security: hardened CSP (GitHub Pages cannot set HTTP headers; meta CSP + Cloudflare recommended) -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    base-uri 'self';
+    object-src 'none';
+    script-src 'self';
+    script-src-attr 'none';
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src 'self' https://fonts.gstatic.com data:;
+    img-src 'self' data: blob:;
+    media-src 'self' blob:;
+    connect-src 'self' https://api.groq.com https://generativelanguage.googleapis.com https://factchecktools.googleapis.com https://openrouter.ai https://api.openai.com https://raw.githubusercontent.com https://gacs.app;
+    worker-src 'self';
+    manifest-src 'self';
+    form-action 'none';
+    frame-src 'none';
+    child-src 'none';
+    upgrade-insecure-requests;
+    block-all-mixed-content
+  " />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta name="format-detection" content="telephone=no" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="TRUST AI" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="TRUST AI" />
+  <meta property="og:title" content="TRUST AI — تحقق قبل أن تثق" />
+  <meta property="og:description" content="افحص الرسائل والروابط والأخبار وأرقام الهاتف المشبوهة قبل أن تثق. Verify before you trust." />
+  <meta property="og:image" content="assets/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="TRUST AI — تحقق قبل أن تثق" />
+  <meta name="twitter:image" content="assets/og-image.png" />
   <title>TRUST AI — Verify before you trust</title>
   <link rel="manifest" href="manifest.json" />
-  <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
-  <link rel="apple-touch-icon" href="assets/icon-192.svg" />
+  <link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/icon-16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png" />
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -29,6 +68,20 @@
           <span class="logo-text">TRUST AI</span>
         </div>
         <div class="header-actions">
+          <button type="button" id="btn-theme" data-i18n-title="btnTheme" class="icon-btn" data-i18n-aria="btnTheme" aria-label="تبديل الوضع" title="ليلي / نهاري">
+            <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </button>
+          <button type="button" id="btn-share" data-i18n-title="btnShare" class="icon-btn" data-i18n-aria="btnShare" aria-label="مشاركة" title="مشاركة التطبيق">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          </button>
+          <button type="button" id="btn-install" data-i18n-title="btnInstall" class="icon-btn install-btn" data-i18n-aria="btnInstall" aria-label="تثبيت التطبيق" title="تثبيت على سطح المكتب">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
+          <button type="button" id="btn-client" data-i18n-title="btnClient" class="icon-btn client-btn" data-i18n-aria="btnClient" aria-label="العميل" title="العميل — مركز تحليل الحدث">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.2 7.9-8 9-4.8-1.1-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
+          </button>
+          <button type="button" id="btn-elderly" data-i18n-title="btnElderly" class="icon-btn" data-i18n-aria="btnElderly" aria-label="وضع كبار السن" title="وضع كبار السن">Aa</button>
           <button type="button" id="btn-about" class="icon-btn" data-i18n-aria="btnAbout" aria-label="عن التطبيق">ⓘ</button>
           <button type="button" id="btn-settings" class="icon-btn" data-i18n-aria="btnSettings" aria-label="Settings">⚙</button>
           <div class="lang-switch" role="group" aria-label="Language switcher">
@@ -73,6 +126,21 @@
           <p class="hero-extra" data-i18n="extra">حلّل الرسائل والروابط ولقطات الشاشة قبل أن تضغط أو تدفع أو ترد أو تشارك معلوماتك.</p>
         </div>
 
+        <button type="button" id="btn-open-client" class="client-cta">
+          <span class="client-cta-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.2 7.9-8 9-4.8-1.1-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
+          </span>
+          <span class="client-cta-text">
+            <strong data-i18n="clientCta">افتح العميل الكامل</strong>
+            <small data-i18n="clientCtaDesc">رابط أو صورة أو اسم أو خبر — تحليل شامل بالرسوم والتحذيرات</small>
+          </span>
+        </button>
+
+        <button type="button" id="btn-install-cta" class="install-cta">
+          <span aria-hidden="true">⬇</span>
+          <span class="install-cta-text"><strong data-i18n="installCtaTitle">ثبّت التطبيق على سطح المكتب</strong><small data-i18n="installCtaDesc">يعمل كبرنامج مستقل وبدون إنترنت</small></span>
+        </button>
+
         <div class="input-card">
           <label for="input-text" class="sr-only" data-i18n="inputLabel">ألصق الرسالة أو الرابط هنا</label>
           <div class="input-wrap">
@@ -85,7 +153,7 @@
               aria-describedby="privacy-note"
               maxlength="10000"
             ></textarea>
-            <button type="button" id="btn-mic" class="mic-btn" data-i18n-aria="btnMic" aria-label="بحث صوتي" title="بحث صوتي">
+            <button type="button" id="btn-mic" data-i18n-title="btnMic" class="mic-btn" data-i18n-aria="btnMic" aria-label="بحث صوتي" title="بحث صوتي">
               <svg class="mic-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
@@ -104,6 +172,8 @@
           <p id="privacy-note" class="privacy-note" data-i18n="privacyNote">
             لأمانك: لا ترسل كلمات المرور أو رموز OTP أو بياناتك البنكية الحقيقية.
           </p>
+          <p id="sensitive-warn" class="sensitive-warn hidden" role="alert"></p>
+          <p class="kbd-hint" data-i18n="kbdHint">اختصار: Ctrl+Enter للتحقق · Ctrl+V للصق صورة</p>
 
           <div class="btn-row">
             <button type="button" id="btn-analyze" class="btn btn-primary" data-i18n="btnAnalyze">تحقق الآن</button>
@@ -111,13 +181,31 @@
             <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" class="sr-only" tabindex="-1" />
           </div>
           <p class="privacy-note" data-i18n="uploadHint">إن لم تفتح نافذة الاختيار: اسحب الصورة وأفلتها هنا، أو انسخها والصقها (Ctrl+V).</p>
-          <button type="button" id="btn-example" class="btn btn-ghost" data-i18n="btnExample">تجربة مثال</button>
+          <div class="btn-row home-extra-btns">
+            <button type="button" id="btn-example" class="btn btn-ghost" data-i18n="btnExample">تجربة مثال</button>
+            <button type="button" id="btn-history" class="btn btn-ghost" data-i18n="btnHistory">السجل</button>
+          </div>
+        </div>
+
+
+        <!-- v2 Protection tools -->
+        <div class="tools-section" id="tools-section">
+          <h2 class="tools-title" data-i18n="toolsTitle">أدوات الحماية</h2>
+          <div class="tools-grid">
+            <button type="button" class="tool-card" id="btn-fraud-db" data-i18n="btnFraudDb">قاعدة البيانات العالمية للاحتيال</button>
+            <button type="button" class="tool-card" id="btn-phone-check" data-i18n="btnPhoneCheck">فحص أرقام الهواتف المشبوهة</button>
+            <button type="button" class="tool-card" id="btn-me-center" data-i18n="btnMeCenter">مركز رصد الاحتيال في سوريا والشرق الأوسط</button>
+            <button type="button" class="tool-card" id="btn-questnet" data-i18n="btnQuestnet">تحقيق كويست نيت</button>
+            <button type="button" class="tool-card" id="btn-victim-help" data-i18n="btnVictimHelp">تعرّضت للاحتيال؟ ماذا أفعل الآن؟</button>
+            <button type="button" class="tool-card" id="btn-report-scam" data-i18n="btnReportScam">أبلغ عن عملية احتيال</button>
+          </div>
         </div>
 
         <div class="layers-info">
-          <div class="layer-chip">① <span data-i18n="layerOffline">الطبقة 1: محرك القواعد (بدون إنترنت)</span></div>
-          <div class="layer-chip">② <span data-i18n="layerAI">الطبقة 2: نموذج الذكاء الاصطناعي</span></div>
+          <div class="layer-chip offline-chip">① <span data-i18n="layerOffline">الطبقة 1: محرك القواعد (بدون إنترنت)</span></div>
+          <div class="layer-chip" id="layer-ai-chip">② <span data-i18n="layerAI">الطبقة 2: نموذج الذكاء الاصطناعي</span></div>
         </div>
+        <p id="mode-banner" class="mode-banner offline-banner" data-i18n="modeBannerOffline">يعمل محلياً بالكامل — لا يحتاج مفتاحاً للتحليل الأساسي</p>
       </section>
 
       <!-- ANALYZING -->
@@ -170,8 +258,14 @@
 
         <p id="result-disclaimer" class="disclaimer" data-i18n="disclaimer"></p>
 
+        <div class="btn-row result-actions-row">
+          <button type="button" id="btn-copy-result" class="btn btn-secondary" data-i18n="btnCopyResult">نسخ النتيجة</button>
+          <button type="button" id="btn-share-result" class="btn btn-secondary" data-i18n="btnShareResult">مشاركة النتيجة</button>
+          <button type="button" id="btn-print-result" class="btn btn-secondary" data-i18n="btnPrintResult">طباعة / PDF</button>
+        </div>
         <div class="btn-row">
-          <button type="button" id="btn-source" class="btn btn-primary">📊 تقرير المصدر التفصيلي</button>
+          <button type="button" id="btn-result-client" class="btn btn-secondary" data-i18n="clientFromResult">فتح في العميل الكامل</button>
+          <button type="button" id="btn-source" class="btn btn-primary" data-i18n="btnSource">تقرير المصدر التفصيلي</button>
           <button type="button" id="btn-again" class="btn btn-secondary" data-i18n="btnAgain">تحليل جديد</button>
           <button type="button" id="btn-back" class="btn btn-secondary" data-i18n="btnBack">العودة</button>
         </div>
@@ -189,6 +283,95 @@
       </section>
 
       <!-- ABOUT / METHODOLOGY (صفحة الشرح الموثوق) -->
+
+      <!-- FRAUD DATABASE -->
+      <section id="view-fraud-db" class="view" aria-labelledby="fraud-db-title">
+        <h2 id="fraud-db-title" class="about-title" data-i18n="fraudDbTitle">قاعدة البيانات العالمية للاحتيال</h2>
+        <p class="about-lead" data-i18n="fraudDbLead">كيانات وتحذيرات من مصادر عامة. التغطية غير كاملة — تحقق دائماً من المصادر الأصلية.</p>
+        <div class="fraud-toolbar">
+          <input type="search" id="fraud-search" class="text-input" data-i18n-placeholder="fraudDbSearch" placeholder="ابحث عن اسم شركة أو كيان..." autocomplete="off" />
+          <button type="button" id="btn-fraud-update" class="btn btn-primary" data-i18n="fraudDbUpdate">تحديث قاعدة البيانات الآن</button>
+        </div>
+        <div id="fraud-update-status" class="fraud-status hidden" role="status"></div>
+        <div id="fraud-stats" class="fraud-stats"></div>
+        <div id="fraud-results" class="fraud-results"></div>
+        <div id="fraud-numbers" class="fraud-results pn-numbers"></div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary btn-back-home" data-i18n="btnBack">العودة</button>
+        </div>
+      </section>
+
+      <!-- PHONE CHECK -->
+      <section id="view-phone" class="view" aria-labelledby="phone-title">
+        <h2 id="phone-title" class="about-title" data-i18n="phoneTitle">فحص أرقام الهواتف المشبوهة</h2>
+        <p class="about-lead" data-i18n="phoneLead">أدخل الرقم مع رمز الدولة إن أمكن. لا نكشف هوية المتصل.</p>
+        <div class="phone-form">
+          <input type="tel" id="phone-input" class="text-input" data-i18n-placeholder="phonePlaceholder" placeholder="+963 ..." autocomplete="off" inputmode="tel" />
+          <button type="button" id="btn-phone-run" class="btn btn-primary" data-i18n="phoneCheckBtn">فحص الرقم</button>
+        </div>
+        <div id="phone-result" class="phone-result hidden"></div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary btn-back-home" data-i18n="btnBack">العودة</button>
+        </div>
+      </section>
+
+      <!-- ME CENTER -->
+      <section id="view-me" class="view" aria-labelledby="me-title">
+        <h2 id="me-title" class="about-title" data-i18n="meTitle">مركز رصد الاحتيال — سوريا والشرق الأوسط</h2>
+        <p class="about-lead" data-i18n="meLead">تركيز على الكيانات والأنماط ذات الصلة بالمنطقة. المصادر عامة وقابلة للتحقق.</p>
+        <input type="search" id="me-search" class="text-input" data-i18n-placeholder="fraudDbSearch" placeholder="ابحث..." autocomplete="off" />
+        <div id="me-results" class="fraud-results"></div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary btn-back-home" data-i18n="btnBack">العودة</button>
+        </div>
+      </section>
+
+      <!-- QUEST NET -->
+      <section id="view-questnet" class="view" aria-labelledby="quest-title">
+        <h2 id="quest-title" class="about-title" data-i18n="questTitle">ملف تحقيق: كويست نيت / QNet</h2>
+        <div id="quest-body" class="quest-body"></div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary btn-back-home" data-i18n="btnBack">العودة</button>
+        </div>
+      </section>
+
+      <!-- VICTIM HELP -->
+      <section id="view-victim" class="view" aria-labelledby="victim-title">
+        <h2 id="victim-title" class="about-title" data-i18n="victimTitle">تعرّضت للاحتيال؟ ماذا أفعل الآن؟</h2>
+        <div id="victim-body" class="victim-body"></div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-primary btn-back-home" data-i18n="btnBack">العودة</button>
+        </div>
+      </section>
+
+      <!-- REPORT SCAM -->
+      <section id="view-report" class="view" aria-labelledby="report-title">
+        <h2 id="report-title" class="about-title" data-i18n="reportTitle">أبلغ عن عملية احتيال</h2>
+        <p class="about-lead" data-i18n="reportLead">البلاغات تُحفظ محلياً على جهازك في هذه النسخة. لا تُنشر تلقائياً.</p>
+        <form id="report-form" class="report-form" autocomplete="off">
+          <label><span data-i18n="reportName">اسم الجهة أو الشركة</span>
+            <input type="text" id="report-name" class="text-input" required maxlength="200" />
+          </label>
+          <label><span data-i18n="reportUrl">موقع أو رابط (اختياري)</span>
+            <input type="url" id="report-url" class="text-input" maxlength="500" />
+          </label>
+          <label><span data-i18n="reportPhone">رقم هاتف (اختياري)</span>
+            <input type="tel" id="report-phone" class="text-input" maxlength="30" />
+          </label>
+          <label><span data-i18n="reportCountry">البلد</span>
+            <input type="text" id="report-country" class="text-input" maxlength="80" />
+          </label>
+          <label><span data-i18n="reportDesc">وصف موجز لما حدث</span>
+            <textarea id="report-desc" class="text-input" rows="4" maxlength="2000" required></textarea>
+          </label>
+          <button type="submit" class="btn btn-primary" data-i18n="reportSubmit">حفظ البلاغ محلياً</button>
+        </form>
+        <p id="report-status" class="fraud-status hidden" role="status"></p>
+        <div class="btn-row">
+          <button type="button" class="btn btn-secondary btn-back-home" data-i18n="btnBack">العودة</button>
+        </div>
+      </section>
+
       <section id="view-about" class="view" aria-labelledby="about-title">
         <h2 id="about-title" class="about-title" data-i18n="aboutTitle">كيف يعمل TRUST AI؟</h2>
         <p class="about-lead" data-i18n="aboutLead">شرح موثوق وشفاف لمنهجية التحليل — بدون وعود مبالغ فيها.</p>
@@ -202,7 +385,7 @@
           <h3 data-i18n="aboutLayersTitle">الطبقات المزدوجة</h3>
           <ol class="about-list">
             <li><strong data-i18n="aboutLayer1Title">الطبقة 1 — محرك القواعد (بدون إنترنت):</strong> <span data-i18n="aboutLayer1">يحلل النص محلياً في المتصفح وفق أنماط معروفة: الاستعجال، انتحال الهوية، طلب أموال، معلومات حساسة، روابط مشبوهة، عروض غير واقعية، وهندسة اجتماعية. لا يحتاج اتصالاً ولا مفتاحاً.</span></li>
-            <li><strong data-i18n="aboutLayer2Title">الطبقة 2 — ذكاء اصطناعي (اختياري):</strong> <span data-i18n="aboutLayer2">عند تفعيل مفتاح API من مزوّدك (Groq أو Gemini أو OpenRouter أو OpenAI)، يُضاف تحليل لغوي أعمق وتحليل صور (رؤية) إن دعم النموذج ذلك. المفتاح يبقى في ذاكرة الجلسة فقط ولا يُرسل إلى أي خادم لـ TRUST AI.</span></li>
+            <li><strong data-i18n="aboutLayer2Title">الطبقة 2 — ذكاء اصطناعي (اختياري):</strong> <span data-i18n="aboutLayer2">عند تفعيل مفتاح API من مزوّدك (Groq أو Gemini أو OpenRouter أو OpenAI)، يُضاف تحليل لغوي أعمق وتحليل صور (رؤية) إن دعم النموذج ذلك. المفتاح يُحفظ على جهازك فقط حتى تلغي التفعيل يدويًا، ولا يُرسل إلى أي خادم لـ TRUST AI.</span></li>
           </ol>
         </article>
 
@@ -230,11 +413,13 @@
           <h3 data-i18n="aboutPrivacyTitle">الخصوصية والحدود</h3>
           <ul class="about-list">
             <li data-i18n="aboutPrivacy1">لا حسابات مستخدمين ولا تخزين دائم لمحتوى رسائلك أو صورك.</li>
-            <li data-i18n="aboutPrivacy2">مفاتيح API في الذاكرة فقط وتُمسح عند إغلاق الجلسة أو إلغاء التفعيل.</li>
+            <li data-i18n="aboutPrivacy2">مفاتيح API تُحفظ على جهازك فقط وتبقى إلى أن تلغي التفعيل يدويًا.</li>
             <li data-i18n="aboutPrivacy3">لا ترسل كلمات مرور أو OTP أو بيانات بنكية حقيقية إلى أي خدمة.</li>
             <li data-i18n="aboutPrivacy4">لا يضمن أي نظام أماناً بنسبة 100%. القرار النهائي دائماً لك.</li>
           </ul>
         </article>
+
+        <article id="shield-status" class="about-card shield-card" aria-live="polite"></article>
 
         <article class="about-card about-contact">
           <h3 data-i18n="aboutContactTitle">تواصل مع المطوّر</h3>
@@ -257,6 +442,24 @@
     </footer>
   </div>
 
+  <!-- Install modal -->
+  <div id="install-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="install-title">
+    <div id="install-backdrop" class="modal-backdrop"></div>
+    <div class="modal-panel">
+      <div class="modal-header">
+        <h2 id="install-title" data-i18n="installTitle">تثبيت TRUST AI</h2>
+        <button type="button" id="install-close" class="icon-btn" data-i18n="close">إغلاق</button>
+      </div>
+      <img src="assets/icon-192.png" alt="" width="72" height="72" class="install-icon" />
+      <p class="modal-note" data-i18n="installIntro">اتبع الخطوات الخاصة بمتصفحك الحالي:</p>
+      <ol id="install-steps" class="install-steps"></ol>
+      <div class="btn-row">
+        <button type="button" id="btn-install-native" class="btn btn-primary hidden" data-i18n="installNow">تثبيت الآن</button>
+        <button type="button" id="btn-install-shortcut" class="btn btn-secondary hidden" data-i18n="installShortcut">تنزيل اختصار سطح المكتب (ويندوز)</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Examples modal -->
   <div id="examples-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="examples-title">
     <div id="examples-backdrop" class="modal-backdrop"></div>
@@ -270,24 +473,62 @@
     </div>
   </div>
 
-  <!-- Settings modal -->
-  <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-    <div id="settings-backdrop" class="modal-backdrop"></div>
+  <!-- History modal -->
+  <div id="history-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="history-title">
+    <div id="history-backdrop" class="modal-backdrop"></div>
     <div class="modal-panel settings-panel">
       <div class="modal-header">
-        <h2 id="settings-title" data-i18n="settingsTitle">إعدادات الذكاء الاصطناعي (اختياري)</h2>
+        <h2 id="history-title" data-i18n="historyTitle">سجل التحليلات</h2>
+        <button type="button" id="history-close" class="icon-btn" data-i18n="close">إغلاق</button>
+      </div>
+      <p class="modal-note" data-i18n="historyDesc">آخر التحليلات محفوظة على جهازك فقط — لا تُرسل لأي خادم.</p>
+      <ul id="history-list" class="history-list"></ul>
+      <div class="btn-row settings-btns">
+        <button type="button" id="btn-clear-history" class="btn btn-ghost" data-i18n="btnClearHistory">مسح السجل</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings modal — Models panel (لوحة النماذج) -->
+  <div id="settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div id="settings-backdrop" class="modal-backdrop"></div>
+    <div class="modal-panel settings-panel mp">
+      <div class="modal-header">
+        <h2 id="settings-title" data-i18n="settingsTitle">لوحة النماذج</h2>
         <button type="button" id="settings-close" class="icon-btn" data-i18n="close">إغلاق</button>
       </div>
-      <p class="modal-note" data-i18n="settingsDesc">يعمل التطبيق بالكامل بدون أي مفتاح. أضف مفتاحاً مجانياً لتعزيز التحليل والصور.</p>
+      <p class="modal-note" data-i18n="settingsDesc">يعمل التطبيق بالكامل بدون أي مفتاح. أضف مفتاحاً لتعزيز التحليل وقراءة الصور.</p>
 
-      <label class="field-label" for="ai-model" data-i18n="modelLabel">النموذج</label>
-      <select id="ai-model" class="field-select"></select>
+      <div id="mp-status" class="mp-status off" role="status"></div>
 
-      <label class="field-label" for="ai-custom-model">نموذج مخصص (اختياري) — Custom model ID</label>
-      <input type="text" id="ai-custom-model" class="field-input" placeholder="مثال: gemini-2.5-flash" autocomplete="off" spellcheck="false" dir="ltr" />
+      <div id="mp-tabs" class="mp-tabs" role="tablist" aria-label="Providers"></div>
 
-      <label class="field-label" for="ai-key" data-i18n="apiKeyLabel">مفتاح API (مخفي)</label>
-      <input type="password" id="ai-key" class="field-input" data-i18n-placeholder="apiKeyPlaceholder" placeholder="الصق المفتاح هنا" autocomplete="off" spellcheck="false" />
+      <section class="mp-section" aria-labelledby="mp-models-title">
+        <h3 id="mp-models-title" class="mp-h" data-i18n="mpModels">النماذج المتاحة</h3>
+        <div id="mp-models" class="mp-models" role="radiogroup"></div>
+        <select id="ai-model" class="sr-only" tabindex="-1" aria-hidden="true"></select>
+      </section>
+
+      <section class="mp-section mp-key" aria-labelledby="mp-key-title">
+        <h3 id="mp-key-title" class="mp-h" data-i18n="mpKey">مفتاح API</h3>
+        <div id="mp-keylink" class="mp-keylink"></div>
+        <div class="mp-keyfield">
+          <input type="password" id="ai-key" class="field-input" data-i18n-placeholder="apiKeyPlaceholder" placeholder="الصق المفتاح هنا" autocomplete="off" autocapitalize="off" spellcheck="false" dir="ltr" aria-describedby="mp-keyhint" />
+          <button type="button" id="mp-eye" class="mp-iconbtn" data-i18n-aria="mpShow" aria-label="إظهار المفتاح">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+          <button type="button" id="mp-paste" class="mp-iconbtn" data-i18n-aria="mpPaste" aria-label="لصق">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
+          </button>
+        </div>
+        <p id="mp-keyhint" class="mp-keyhint" aria-live="polite"></p>
+        <details class="mp-adv">
+          <summary data-i18n="mpAdvanced">متقدم: معرّف نموذج مخصص</summary>
+          <label class="field-label" for="ai-custom-model">Custom model ID</label>
+          <input type="text" id="ai-custom-model" class="field-input" placeholder="gemini-2.5-flash" autocomplete="off" spellcheck="false" dir="ltr" />
+        </details>
+      </section>
+
       <div id="ai-test-result" class="ai-test-result hidden" role="status" aria-live="polite"></div>
 
       <div class="btn-row settings-btns">
@@ -295,14 +536,53 @@
         <button type="button" id="btn-test-ai" class="btn btn-secondary" data-i18n="btnTestAI">اختبار الاتصال</button>
         <button type="button" id="btn-clear-ai" class="btn btn-ghost" data-i18n="btnClearAI">إلغاء التفعيل</button>
       </div>
+      <p class="mp-privacy" data-i18n="mpPrivacy">يُحفظ المفتاح على هذا الجهاز فقط (في متصفحك) إلى أن تلغي التفعيل يدويًا، ولا يُرسل إلا إلى مزوّد النموذج الذي اخترته.</p>
+    </div>
+  </div>
 
-      <h3 class="free-title" data-i18n="freeModelsNote">نماذج مجانية — احصل على المفتاح من الرابط الرسمي:</h3>
-      <ul id="free-models-list" class="free-models-list"></ul>
+  <!-- CLIENT — full-screen event analysis center (العميل) -->
+  <div id="client-screen" class="client-screen hidden" role="dialog" aria-modal="true" aria-labelledby="cl-title">
+    <div class="cl-bar">
+      <button type="button" id="cl-close" class="icon-btn cl-close" aria-label="Close">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div class="cl-bar-title">
+        <img src="assets/logo.svg" alt="" width="24" height="24" aria-hidden="true" />
+        <h2 id="cl-title">العميل</h2>
+      </div>
+      <span id="cl-ai-chip" class="cl-ai-chip off"></span>
+      <button type="button" id="cl-models" class="btn btn-secondary cl-models-btn">⚙</button>
+    </div>
+    <div class="cl-scroll" id="cl-scroll">
+      <div class="cl-wrap">
+        <section class="cl-composer" aria-label="Input">
+          <p id="cl-sub" class="cl-sub"></p>
+          <div id="cl-kinds" class="cl-kinds" role="radiogroup"></div>
+          <div id="cl-drop" class="cl-drop">
+            <textarea id="cl-text" class="input-area cl-text" rows="5" maxlength="20000" spellcheck="false"></textarea>
+            <div id="cl-tray" class="cl-tray hidden"></div>
+          </div>
+          <p id="cl-sens" class="sensitive-warn hidden" role="alert"></p>
+          <p id="cl-drophint" class="privacy-note"></p>
+          <input type="file" id="cl-file" class="sr-only" tabindex="-1" multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp,.txt,.md,.csv,.eml,.log,.json,text/plain" />
+          <div class="btn-row">
+            <button type="button" id="cl-analyze" class="btn btn-primary"></button>
+            <label for="cl-file" id="cl-add" class="btn btn-secondary btn-label" role="button" tabindex="0"></label>
+          </div>
+          <div class="btn-row">
+            <button type="button" id="cl-example" class="btn btn-ghost"></button>
+            <button type="button" id="cl-clear" class="btn btn-ghost"></button>
+          </div>
+        </section>
+        <div id="cl-progress" class="cl-progress hidden" aria-live="polite"></div>
+        <div id="cl-out" class="cl-out"></div>
+      </div>
     </div>
   </div>
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
   <script type="module" src="js/app.js"></script>
+  <script src="js/sw-register.js"></script>
 </body>
 </html>

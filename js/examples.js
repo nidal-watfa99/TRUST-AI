@@ -75,4 +75,31 @@ export const EXAMPLES = [
       en: "Hi, reminder about tomorrow's meeting at 10 AM in the office. Thanks.",
     },
   },
+  {
+    id: "ex9",
+    titleKey: "ex9_title",
+    descKey: "ex9_desc",
+    text: {
+      ar: "فرصة تغيير حياتك! انضم لشركة الشبكة العالمية. رسوم التسجيل 1800 دولار فقط. يجب تجنيد 3 أشخاص من العائلة أو الأصدقاء. لا تخبر أحداً حتى أقرب الناس. خلال أشهر تصبح مليونيراً. هذا سر النجاح.",
+      en: "Life-changing opportunity! Join the global network company. Registration fee only $1800. You must recruit 3 people from family or friends. Don't tell anyone, not even closest relatives. In months you become a millionaire. This is the secret to success.",
+    },
+  },
+  {
+    id: "ex10",
+    titleKey: "ex10_title",
+    descKey: "ex10_desc",
+    text: {
+      ar: "Airdrop مجاني 5000 USDT! اربط محفظتك الآن عبر الرابط واكتب عبارة الاسترداد seed phrase لتفعيل الاستلام. العرض لـ 100 شخص فقط: https://bit.ly/free-usdt-claim",
+      en: "Free airdrop 5000 USDT! Connect your wallet now via the link and enter your seed phrase to activate claim. Only 100 spots: https://bit.ly/free-usdt-claim",
+    },
+  },
+  {
+    id: "ex11",
+    titleKey: "ex11_title",
+    descKey: "ex11_desc",
+    text: {
+      ar: "أنا مدير فرع البنك. توفي قريب لك وترك رصيداً كبيراً. لتحويل المبلغ ادفع رسوم إجراءات 300$ عبر Western Union وأرسل صورة الهوية فوراً. سري للغاية.",
+      en: "I am a bank branch manager. A relative of yours passed away and left a large balance. To transfer the funds pay a $300 processing fee via Western Union and send your ID photo immediately. Strictly confidential.",
+    },
+  },
 ];

@@ -34,10 +34,10 @@ const translations = {
     btnBack: "العودة",
     examplesTitle: "أمثلة تجريبية",
     examplesNote: "هذه أمثلة خيالية لأغراض التجربة فقط.",
-    footer: "TRUST AI v1.0 — تحقق قبل أن تثق. منصة مفتوحة للسلامة الرقمية.",
+    footer: "TRUST AI v3.0 — تحقق قبل أن تثق. منصة مفتوحة للسلامة الرقمية.",
     removeImage: "حذف الصورة",
     close: "إغلاق",
-    settingsTitle: "إعدادات الذكاء الاصطناعي (اختياري)",
+    settingsTitle: "لوحة النماذج",
     settingsDesc: "يعمل التطبيق بالكامل بدون أي مفتاح. أضف مفتاحاً مجانياً لتعزيز التحليل والصور.",
     modelLabel: "النموذج",
     apiKeyLabel: "مفتاح API (مخفي)",
@@ -47,8 +47,61 @@ const translations = {
     btnTestAI: "اختبار الاتصال",
     aiConnected: "متصل",
     aiDisconnected: "غير متصل — يعمل بالوضع المحلي",
-    freeModelsNote: "نماذج مجانية — احصل على المفتاح من الرابط الرسمي:",
-    getKey: "الحصول على المفتاح",
+    freeModelsNote: "النماذج — احصل على المفتاح من الرابط الرسمي (يفتح صفحة إنشاء المفتاح):",
+    getKey: "إنشاء المفتاح",
+    btnTheme: "تبديل الوضع الليلي/النهاري",
+    btnShare: "مشاركة التطبيق",
+    btnInstall: "تثبيت التطبيق على سطح المكتب",
+    installOk: "تم تثبيت التطبيق ✓",
+    installHint: "اضغط لتثبيت TRUST AI على جهازك",
+    installCtaTitle: "ثبّت التطبيق على سطح المكتب",
+    installCtaDesc: "يعمل كبرنامج مستقل وبدون إنترنت",
+    installTitle: "تثبيت TRUST AI",
+    installIntro: "اتبع الخطوات الخاصة بمتصفحك الحالي:",
+    installNow: "تثبيت الآن",
+    installShortcut: "تنزيل اختصار سطح المكتب (ويندوز)",
+    shareOk: "تمت المشاركة",
+    shareFail: "تعذّرت المشاركة — انسخ الرابط يدوياً",
+    badgeFree: "مجاني",
+    badgePaid: "مدفوع",
+    badgeVision: "رؤية",
+    btnHistory: "السجل",
+    historyTitle: "سجل التحليلات",
+    historyDesc: "آخر التحليلات محفوظة على جهازك فقط — لا تُرسل لأي خادم.",
+    btnClearHistory: "مسح السجل",
+    historyEmpty: "لا يوجد سجل بعد.",
+    historyConfirmClear: "هل تريد مسح كل السجل؟ لا يمكن التراجع.",
+    clearAIConfirm: "هل تريد إلغاء تفعيل مفتاح API؟",
+    btnCopyResult: "نسخ النتيجة",
+    btnShareResult: "مشاركة النتيجة",
+    btnPrintResult: "طباعة / PDF",
+    btnSource: "تقرير المصدر التفصيلي",
+    copyOk: "تم نسخ النتيجة ✓",
+    shareResultOk: "تمت مشاركة النتيجة",
+    kbdHint: "اختصار: Ctrl+Enter للتحقق · Ctrl+V للصق صورة",
+    modeBannerOffline: "يعمل محلياً بالكامل — لا يحتاج مفتاحاً للتحليل الأساسي",
+    modeBannerAI: "متصل بالذكاء الاصطناعي — تحليل أعمق مفعّل",
+    btnElderly: "وضع كبار السن (خط أكبر)",
+    elderlyOn: "وضع كبار السن مفعّل",
+    elderlyOff: "وضع عادي",
+    pasteImageOk: "تم لصق الصورة ✓",
+    sensitiveWarnOtp: "⚠ يبدو أن النص يحتوي رمزاً أو OTP — لا تلصق بيانات حقيقية.",
+    sensitiveWarnCard: "⚠ يبدو أن النص يحتوي رقم بطاقة — لا تلصق بيانات بنكية حقيقية.",
+    sensitiveWarnIban: "⚠ يبدو أن النص يحتوي IBAN — احذف البيانات الحساسة قبل التحليل.",
+    sensitiveWarnSeed: "⚠ عبارة استرداد / مفتاح خاص — لا تلصقها أبداً هنا.",
+    sensitiveWarnPassword: "⚠ كلمة مرور ظاهرة — احذفها فوراً.",
+    linkFlag_shortener: "رابط مختصر — الوجهة مخفية",
+    linkFlag_brand_spoof: "يشبه علامة تجارية معروفة (انتحال محتمل)",
+    linkFlag_typosquat: "نطاق مشابه لاسم معروف",
+    linkFlag_suspicious_tld: "امتداد نطاق مشبوه",
+    linkFlag_http_not_https: "غير مشفّر (http)",
+    usageToday: "استخدام اليوم (تقريبي):",
+    ex9_title: "عرض هرمي / شبكة",
+    ex9_desc: "رسوم عالية + تجنيد أقارب + سرية",
+    ex10_title: "Airdrop كريبتو وهمي",
+    ex10_desc: "طلب seed phrase عبر رابط مختصر",
+    ex11_title: "ميراث / مدير بنك",
+    ex11_desc: "رسوم تحويل + هوية + سرية",
     connectionOk: "الاتصال ناجح ✓",
     connectionFail: "فشل الاتصال",
     confidence: "ثقة التحليل",
@@ -133,7 +186,7 @@ const translations = {
     aboutLayer1Title: "الطبقة 1 — محرك القواعد (بدون إنترنت):",
     aboutLayer1: "يحلل النص محلياً في المتصفح وفق أنماط معروفة: الاستعجال، انتحال الهوية، طلب أموال، معلومات حساسة، روابط مشبوهة، عروض غير واقعية، وهندسة اجتماعية. لا يحتاج اتصالاً ولا مفتاحاً.",
     aboutLayer2Title: "الطبقة 2 — ذكاء اصطناعي (اختياري):",
-    aboutLayer2: "عند تفعيل مفتاح API من مزوّدك (Groq أو Gemini أو OpenRouter أو OpenAI)، يُضاف تحليل لغوي أعمق وتحليل صور (رؤية) إن دعم النموذج ذلك. المفتاح يبقى في ذاكرة الجلسة فقط ولا يُرسل إلى أي خادم لـ TRUST AI.",
+    aboutLayer2: "عند تفعيل مفتاح API من مزوّدك (Groq أو Gemini أو OpenRouter أو OpenAI)، يُضاف تحليل لغوي أعمق وتحليل صور (رؤية) إن دعم النموذج ذلك. المفتاح يُحفظ على جهازك فقط حتى تلغي التفعيل يدويًا، ولا يُرسل إلى أي خادم لـ TRUST AI.",
     aboutScoreTitle: "كيف تُحسب درجة الخطورة؟",
     aboutScore: "درجة من 0 إلى 100 تُبنى من فئات شفافة بأوزان ثابتة:",
     aboutCatUrgency: "الاستعجال والضغط — حتى 15 نقطة",
@@ -148,12 +201,87 @@ const translations = {
     aboutLinks: "يفحص المحرك نطاقات مشبوهة، انتحال علامات تجارية، عناوين IP، روابط مختصرة، ونطاقات punycode. النتيجة مؤشر مساعدة وليست دليلاً قاطعاً على الخطر.",
     aboutPrivacyTitle: "الخصوصية والحدود",
     aboutPrivacy1: "لا حسابات مستخدمين ولا تخزين دائم لمحتوى رسائلك أو صورك.",
-    aboutPrivacy2: "مفاتيح API في الذاكرة فقط وتُمسح عند إغلاق الجلسة أو إلغاء التفعيل.",
+    aboutPrivacy2: "مفاتيح API تُحفظ على جهازك فقط وتبقى إلى أن تلغي التفعيل يدويًا.",
     aboutPrivacy3: "لا ترسل كلمات مرور أو OTP أو بيانات بنكية حقيقية إلى أي خدمة.",
     aboutPrivacy4: "لا يضمن أي نظام أماناً بنسبة 100%. القرار النهائي دائماً لك.",
     aboutContactTitle: "تواصل مع المطوّر",
     aboutContactDesc: "لملاحظاتك أو اقتراحاتك أو الإبلاغ عن مشكلة، راسل المطوّر مباشرة:",
     aboutContactHint: "نرحب بملاحظاتكم لتحسين المنصة.",
+
+    btnClient: "العميل — مركز تحليل الحدث",
+    metaDescription: "TRUST AI — تحقق قبل أن تثق. منصة موثوقة لتحليل الرسائل والروابط ولقطات الشاشة ضد الاحتيال.",
+    clientCta: "افتح العميل الكامل",
+    clientCtaDesc: "رابط أو صورة أو اسم أو خبر — تحليل شامل بالرسوم والتحذيرات",
+    clientFromResult: "فتح في العميل الكامل",
+    mpModels: "النماذج المتاحة",
+    mpKey: "مفتاح API",
+    mpShow: "إظهار المفتاح",
+    mpHide: "إخفاء المفتاح",
+    mpPaste: "لصق من الحافظة",
+    mpAdvanced: "متقدم: معرّف نموذج مخصص",
+    mpPrivacy: "يُحفظ المفتاح على هذا الجهاز فقط (في متصفحك) إلى أن تلغي التفعيل يدويًا، ولا يُرسل إلا إلى مزوّد النموذج الذي اخترته.",
+    mpOfficial: "الرابط الرسمي لإنشاء المفتاح",
+    mpOpenOfficial: "فتح الصفحة الرسمية",
+    mpCopyLink: "نسخ الرابط",
+    mpLinkCopied: "تم نسخ الرابط ✓",
+    mpSteps: "١) افتح الرابط وسجّل الدخول  ٢) أنشئ مفتاحاً جديداً  ٣) الصقه في الخانة أدناه",
+    mpStatusOn: "نموذج مفعّل",
+    mpStatusOff: "لا يوجد نموذج مفعّل — يعمل بالقواعد المحلية",
+    mpActive: "مفعّل",
+    mpKeyMatch: "الصيغة تبدو صحيحة لهذا المزوّد ✓",
+    mpKeyMismatch: "الصيغة لا تطابق هذا المزوّد — عادةً يبدأ المفتاح بـ",
+    mpKeyEmpty: "المفتاح يبدأ عادةً بـ",
+    mpDocs: "وثائق المزوّد",
+    mpNoVision: "نص فقط",
+    mpPasteFail: "تعذّر اللصق — الصق يدوياً في الخانة.",
+
+    // --- v2 tools ---
+    btnFraudDb: "قاعدة البيانات العالمية للاحتيال",
+    btnUpdateDb: "تحديث قاعدة البيانات الآن",
+    btnPhoneCheck: "فحص أرقام الهواتف المشبوهة",
+    btnMeCenter: "مركز رصد الاحتيال في سوريا والشرق الأوسط",
+    btnQuestnet: "تحقيق كويست نيت",
+    btnVictimHelp: "تعرّضت للاحتيال؟ ماذا أفعل الآن؟",
+    btnReportScam: "أبلغ عن عملية احتيال",
+    btnGlobalSearch: "ابحث في الإنترنت عن جهة",
+    toolsTitle: "أدوات الحماية",
+    fraudDbTitle: "قاعدة البيانات العالمية للاحتيال",
+    fraudDbLead: "كيانات وتحذيرات من مصادر عامة. التغطية غير كاملة — تحقق دائماً من المصادر الأصلية.",
+    fraudDbSearch: "ابحث عن اسم شركة أو كيان...",
+    fraudDbUpdate: "تحديث قاعدة البيانات الآن",
+    fraudDbUpdating: "جارٍ التحديث...",
+    fraudDbSuccess: "تم التحديث بنجاح",
+    fraudDbPartial: "تحديث جزئي",
+    fraudDbFailed: "تعذر الاتصال",
+    fraudDbStats: "الإحصائيات",
+    phoneTitle: "فحص أرقام الهواتف المشبوهة",
+    phoneLead: "أدخل الرقم مع رمز الدولة إن أمكن. لا نكشف هوية المتصل.",
+    phonePlaceholder: "+963 ... أو 9665...",
+    phoneCheckBtn: "فحص الرقم",
+    meTitle: "مركز رصد الاحتيال — سوريا والشرق الأوسط",
+    meLead: "تركيز على الكيانات والأنماط ذات الصلة بالمنطقة. المصادر عامة وقابلة للتحقق.",
+    questTitle: "ملف تحقيق: كويست نيت / QNet",
+    victimTitle: "تعرّضت للاحتيال؟ ماذا أفعل الآن؟",
+    reportTitle: "أبلغ عن عملية احتيال",
+    reportLead: "البلاغات تُحفظ محلياً على جهازك في هذه النسخة. لا تُنشر تلقائياً.",
+    reportName: "اسم الجهة أو الشركة",
+    reportUrl: "موقع أو رابط (اختياري)",
+    reportPhone: "رقم هاتف (اختياري)",
+    reportDesc: "وصف موجز لما حدث",
+    reportCountry: "البلد",
+    reportSubmit: "حفظ البلاغ محلياً",
+    reportSaved: "تم حفظ البلاغ على جهازك",
+    level_critical: "حرج",
+    evidence_high: "دليل قوي",
+    evidence_medium: "دليل متوسط",
+    evidence_low: "دليل ضعيف",
+    noResults: "لا توجد نتائج",
+    sourceLabel: "المصدر",
+    lastUpdate: "آخر تحديث",
+    risk_high: "مرتفع",
+    risk_critical: "حرج",
+    risk_medium: "متوسط",
+    risk_low: "منخفض",
   },
 
   en: {
@@ -187,10 +315,10 @@ const translations = {
     btnBack: "Back",
     examplesTitle: "Demo examples",
     examplesNote: "These are fictional scenarios for testing only.",
-    footer: "TRUST AI v1.0 — Verify before you trust. Open platform for digital safety.",
+    footer: "TRUST AI v3.0 — Verify before you trust. Open platform for digital safety.",
     removeImage: "Remove image",
     close: "Close",
-    settingsTitle: "AI Settings (optional)",
+    settingsTitle: "Models panel",
     settingsDesc: "The app works fully without any key. Add a free key to enhance analysis and images.",
     modelLabel: "Model",
     apiKeyLabel: "API Key (hidden)",
@@ -200,8 +328,61 @@ const translations = {
     btnTestAI: "Test connection",
     aiConnected: "Connected",
     aiDisconnected: "Disconnected — running in local mode",
-    freeModelsNote: "Free models — get your key from the official link:",
-    getKey: "Get API key",
+    freeModelsNote: "Models — get your key from the official link (opens key creation page):",
+    getKey: "Create API key",
+    btnTheme: "Toggle dark/light mode",
+    btnShare: "Share the app",
+    btnInstall: "Install app to desktop",
+    installOk: "App installed ✓",
+    installHint: "Tap to install TRUST AI on your device",
+    installCtaTitle: "Install the app on your desktop",
+    installCtaDesc: "Runs as a standalone program, works offline",
+    installTitle: "Install TRUST AI",
+    installIntro: "Follow the steps for your current browser:",
+    installNow: "Install now",
+    installShortcut: "Download desktop shortcut (Windows)",
+    shareOk: "Shared",
+    shareFail: "Could not share — copy the link manually",
+    badgeFree: "Free",
+    badgePaid: "Paid",
+    badgeVision: "Vision",
+    btnHistory: "History",
+    historyTitle: "Analysis history",
+    historyDesc: "Recent analyses stored on your device only — never sent to any server.",
+    btnClearHistory: "Clear history",
+    historyEmpty: "No history yet.",
+    historyConfirmClear: "Clear all history? This cannot be undone.",
+    clearAIConfirm: "Disable and clear the API key?",
+    btnCopyResult: "Copy result",
+    btnShareResult: "Share result",
+    btnPrintResult: "Print / PDF",
+    btnSource: "Detailed source report",
+    copyOk: "Result copied ✓",
+    shareResultOk: "Result shared",
+    kbdHint: "Shortcut: Ctrl+Enter to analyze · Ctrl+V to paste image",
+    modeBannerOffline: "Fully offline — no key needed for basic analysis",
+    modeBannerAI: "AI connected — deeper analysis enabled",
+    btnElderly: "Larger text mode",
+    elderlyOn: "Large text mode on",
+    elderlyOff: "Normal text mode",
+    pasteImageOk: "Image pasted ✓",
+    sensitiveWarnOtp: "⚠ Text may contain an OTP/code — do not paste real secrets.",
+    sensitiveWarnCard: "⚠ Text may contain a card number — do not paste real banking data.",
+    sensitiveWarnIban: "⚠ Text may contain an IBAN — remove sensitive data first.",
+    sensitiveWarnSeed: "⚠ Seed phrase / private key — never paste it here.",
+    sensitiveWarnPassword: "⚠ Password visible — delete it immediately.",
+    linkFlag_shortener: "Shortened link — destination hidden",
+    linkFlag_brand_spoof: "Looks like a known brand (possible spoof)",
+    linkFlag_typosquat: "Domain similar to a known name",
+    linkFlag_suspicious_tld: "Suspicious domain extension",
+    linkFlag_http_not_https: "Not encrypted (http)",
+    usageToday: "Today's usage (approx):",
+    ex9_title: "Pyramid / network pitch",
+    ex9_desc: "High fee + recruit relatives + secrecy",
+    ex10_title: "Fake crypto airdrop",
+    ex10_desc: "Seed phrase request via short link",
+    ex11_title: "Inheritance / bank manager",
+    ex11_desc: "Transfer fee + ID + secrecy",
     connectionOk: "Connection successful ✓",
     connectionFail: "Connection failed",
     confidence: "Analysis confidence",
@@ -286,7 +467,7 @@ const translations = {
     aboutLayer1Title: "Layer 1 — Rule engine (offline):",
     aboutLayer1: "Analyzes text locally in the browser against known patterns: urgency, impersonation, money requests, sensitive data, suspicious links, unrealistic offers, and social engineering. No connection or key required.",
     aboutLayer2Title: "Layer 2 — AI (optional):",
-    aboutLayer2: "When you enable an API key from your provider (Groq, Gemini, OpenRouter, or OpenAI), deeper language analysis and image (vision) analysis are added if the model supports it. The key stays in session memory only and is never sent to any TRUST AI server.",
+    aboutLayer2: "When you enable an API key from your provider (Groq, Gemini, OpenRouter, or OpenAI), deeper language analysis and image (vision) analysis are added if the model supports it. The key is saved on your device only until you disable it manually, and is never sent to any TRUST AI server.",
     aboutScoreTitle: "How is the risk score calculated?",
     aboutScore: "A score from 0 to 100 built from transparent categories with fixed weights:",
     aboutCatUrgency: "Urgency / pressure — up to 15 points",
@@ -301,30 +482,137 @@ const translations = {
     aboutLinks: "The engine checks suspicious TLDs, brand spoofing, IP hosts, shorteners, and punycode. The result is a helpful indicator, not definitive proof of danger.",
     aboutPrivacyTitle: "Privacy and limits",
     aboutPrivacy1: "No user accounts and no permanent storage of your messages or images.",
-    aboutPrivacy2: "API keys stay in memory only and are cleared when the session ends or you disable them.",
+    aboutPrivacy2: "API keys are saved on this device only and stay until you disable them manually.",
     aboutPrivacy3: "Do not send real passwords, OTPs, or banking data to any service.",
     aboutPrivacy4: "No system can guarantee 100% safety. The final decision is always yours.",
     aboutContactTitle: "Contact the developer",
     aboutContactDesc: "For feedback, suggestions, or to report an issue, email the developer directly:",
     aboutContactHint: "We welcome your feedback to improve the platform.",
+
+    btnClient: "Client — Event analysis center",
+    metaDescription: "TRUST AI — verify before you trust. A trusted platform that analyses messages, links and screenshots against fraud.",
+    clientCta: "Open the full client",
+    clientCtaDesc: "Link, image, name or news — full analysis with charts and warnings",
+    clientFromResult: "Open in full client",
+    mpModels: "Available models",
+    mpKey: "API key",
+    mpShow: "Show key",
+    mpHide: "Hide key",
+    mpPaste: "Paste from clipboard",
+    mpAdvanced: "Advanced: custom model ID",
+    mpPrivacy: "The key is saved on this device only (in your browser) until you disable it manually, and is sent only to the model provider you chose.",
+    mpOfficial: "Official link to create the key",
+    mpOpenOfficial: "Open official page",
+    mpCopyLink: "Copy link",
+    mpLinkCopied: "Link copied ✓",
+    mpSteps: "1) Open the link and sign in  2) Create a new key  3) Paste it in the field below",
+    mpStatusOn: "Model active",
+    mpStatusOff: "No model active — running on local rules",
+    mpActive: "Active",
+    mpKeyMatch: "Format looks right for this provider ✓",
+    mpKeyMismatch: "Format does not match this provider — keys usually start with",
+    mpKeyEmpty: "Keys usually start with",
+    mpDocs: "Provider docs",
+    mpNoVision: "Text only",
+    mpPasteFail: "Could not paste — paste manually into the field.",
+
+    // --- v2 tools ---
+    btnFraudDb: "Global Fraud Database",
+    btnUpdateDb: "Update database now",
+    btnPhoneCheck: "Check suspicious phone numbers",
+    btnMeCenter: "Syria & Middle East fraud watch",
+    btnQuestnet: "Quest Net investigation",
+    btnVictimHelp: "Were you scammed? What to do",
+    btnReportScam: "Report a scam",
+    btnGlobalSearch: "Search the web for an entity",
+    toolsTitle: "Protection tools",
+    fraudDbTitle: "Global Fraud Database",
+    fraudDbLead: "Entities and warnings from public sources. Coverage is incomplete — always verify original sources.",
+    fraudDbSearch: "Search for a company or entity name...",
+    fraudDbUpdate: "Update database now",
+    fraudDbUpdating: "Updating...",
+    fraudDbSuccess: "Updated successfully",
+    fraudDbPartial: "Partial update",
+    fraudDbFailed: "Connection failed",
+    fraudDbStats: "Statistics",
+    phoneTitle: "Suspicious phone number check",
+    phoneLead: "Enter the number with country code if possible. We do not reveal caller identity.",
+    phonePlaceholder: "+963 ... or 9665...",
+    phoneCheckBtn: "Check number",
+    meTitle: "Fraud watch — Syria & Middle East",
+    meLead: "Focus on entities and patterns relevant to the region. Sources are public and verifiable.",
+    questTitle: "Investigation file: Quest Net / QNet",
+    victimTitle: "Were you scammed? What to do now?",
+    reportTitle: "Report a scam",
+    reportLead: "Reports are stored locally on your device in this version. They are not published automatically.",
+    reportName: "Entity or company name",
+    reportUrl: "Website or link (optional)",
+    reportPhone: "Phone number (optional)",
+    reportDesc: "Brief description of what happened",
+    reportCountry: "Country",
+    reportSubmit: "Save report locally",
+    reportSaved: "Report saved on your device",
+    level_critical: "Critical",
+    evidence_high: "Strong evidence",
+    evidence_medium: "Medium evidence",
+    evidence_low: "Weak evidence",
+    noResults: "No results",
+    sourceLabel: "Source",
+    lastUpdate: "Last update",
+    risk_high: "High",
+    risk_critical: "Critical",
+    risk_medium: "Medium",
+    risk_low: "Low",
+
   },
 };
 
-let currentLang = "ar";
+const SUPPORTED = ["ar", "en"];
+const USER_KEY = "trustai_lang_user"; // set ONLY when the person taps a language button
+const LEGACY_KEY = "trustai_lang";    // old versions saved the auto-detected value here (sticky bug)
+
+let currentLang = "en";
 
 export function getLang() {
   return currentLang;
 }
 
-export function setLang(lang) {
+/** Device / browser language: first supported entry of navigator.languages, else English. */
+export function detectLang() {
+  let list = [];
+  try {
+    if (navigator.languages && navigator.languages.length) list = Array.from(navigator.languages);
+  } catch (_) {}
+  if (!list.length) list = [navigator.language || navigator.userLanguage || "en"];
+  for (const l of list) {
+    const code = String(l).toLowerCase().split(/[-_]/)[0];
+    if (SUPPORTED.includes(code)) return code;
+  }
+  return "en";
+}
+
+/** The language the person explicitly picked with the switcher (null = follow the device). */
+export function getSavedLang() {
+  try {
+    const v = localStorage.getItem(USER_KEY);
+    return SUPPORTED.includes(v) ? v : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/** persist=true only for an explicit user choice; automatic detection is never stored. */
+export function setLang(lang, { persist = false } = {}) {
   if (!translations[lang]) return;
   currentLang = lang;
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
   applyTranslations();
-  try {
-    localStorage.setItem("trustai_lang", lang);
-  } catch (_) {}
+  if (persist) {
+    try {
+      localStorage.setItem(USER_KEY, lang);
+    } catch (_) {}
+  }
 }
 
 export function t(key) {
@@ -332,33 +620,32 @@ export function t(key) {
 }
 
 export function applyTranslations() {
+  const L = translations[currentLang];
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     const key = el.getAttribute("data-i18n");
-    if (key && translations[currentLang][key] !== undefined) {
-      el.textContent = translations[currentLang][key];
-    }
+    if (key && L[key] !== undefined) el.textContent = L[key];
   });
   document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
     const key = el.getAttribute("data-i18n-placeholder");
-    if (key && translations[currentLang][key] !== undefined) {
-      el.placeholder = translations[currentLang][key];
-    }
+    if (key && L[key] !== undefined) el.placeholder = L[key];
   });
   document.querySelectorAll("[data-i18n-aria]").forEach((el) => {
     const key = el.getAttribute("data-i18n-aria");
-    if (key && translations[currentLang][key] !== undefined) {
-      el.setAttribute("aria-label", translations[currentLang][key]);
-    }
+    if (key && L[key] !== undefined) el.setAttribute("aria-label", L[key]);
   });
+  document.querySelectorAll("[data-i18n-title]").forEach((el) => {
+    const key = el.getAttribute("data-i18n-title");
+    if (key && L[key] !== undefined) el.setAttribute("title", L[key]);
+  });
+  const meta = document.querySelector('meta[name="description"]');
+  if (meta && L.metaDescription) meta.setAttribute("content", L.metaDescription);
 }
 
 export function initI18n() {
-  let saved = null;
   try {
-    saved = localStorage.getItem("trustai_lang");
+    localStorage.removeItem(LEGACY_KEY); // drop the old auto-saved value that pinned the app to one language
   } catch (_) {}
-  const lang = saved === "en" || saved === "ar" ? saved : "ar";
-  setLang(lang);
+  setLang(getSavedLang() || detectLang());
 }
 
 export { translations };

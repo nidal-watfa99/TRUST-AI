@@ -1,0 +1,27 @@
+# TRUST AI v3.0 — Cloudflare Transform Rules → Modify Response Header
+# (GitHub Pages alone cannot send these; put Cloudflare in front for REAL headers.)
+# Apply to: all requests of your hostname.  Same set is provided as `_headers` for Netlify / Cloudflare Pages.
+
+Content-Security-Policy:
+  default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://api.groq.com https://generativelanguage.googleapis.com https://factchecktools.googleapis.com https://openrouter.ai https://api.openai.com https://raw.githubusercontent.com https://gacs.app; worker-src 'self'; manifest-src 'self'; form-action 'none'; frame-ancestors 'none'; frame-src 'none'; child-src 'none'; upgrade-insecure-requests
+
+X-Frame-Options: DENY
+
+X-Content-Type-Options: nosniff
+
+Referrer-Policy: strict-origin-when-cross-origin
+
+Permissions-Policy: camera=(), geolocation=(), microphone=(self), payment=(), usb=(), serial=(), bluetooth=(), hid=(), midi=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=(), browsing-topics=()
+
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+
+Cross-Origin-Opener-Policy: same-origin
+
+Cross-Origin-Resource-Policy: same-origin
+
+X-Permitted-Cross-Domain-Policies: none
+
+X-DNS-Prefetch-Control: off
+
+# Service worker must always be revalidated so a fixed version reaches users quickly:
+#   Path: /sw.js  →  Cache-Control: no-cache

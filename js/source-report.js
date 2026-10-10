@@ -5,6 +5,7 @@
  * flow graph and radar chart. Runs fully offline on top of the Risk Engine.
  */
 import { analyze, WEIGHTS } from "./risk-engine.js";
+import { escapeHtml } from "./security.js";
 
 const L = {
   ar: {
@@ -118,7 +119,7 @@ const AR_ENTITIES = [
   [/شركة (ال)?(توصيل|شحن|النقل)/, "شركة شحن", "Courier"], [/الدعم الفني|خدمة العملاء/, "الدعم الفني", "Support"],
 ];
 
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const esc = escapeHtml; // single hardened encoder from security.js
 const COLORS = { low: "#22c55e", medium: "#eab308", high: "#f97316", severe: "#ef4444", unknown: "#94a3b8" };
 const lvl = (s) => (s < 0 ? "unknown" : s <= 24 ? "low" : s <= 49 ? "medium" : s <= 74 ? "high" : "severe");
 

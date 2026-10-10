@@ -1,0 +1,19 @@
+{
+  "name": "trust-ai",
+  "version": "3.1.0",
+  "private": true,
+  "type": "module",
+  "description": "TRUST AI — verify before you trust. Static front-end, no build step, zero dependencies.",
+  "license": "MIT",
+  "author": "Nidal Watfa <nidalwatfa99@gmail.com>",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node tests/risk-engine.test.js && node tests/client-engine.test.js && node tests/security.test.js && node tests/i18n.test.js && node tests/ai-persist.test.js && node tests/ai-provider.test.js && node tests/scam-numbers.test.js",
+    "audit": "node scripts/audit.mjs",
+    "check": "npm test && npm run audit",
+    "bundle": "node scripts/bundle-single-file.mjs",
+    "serve": "python3 -m http.server 8080"
+  }
+}

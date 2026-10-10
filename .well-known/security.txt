@@ -1,0 +1,4 @@
+Contact: mailto:nidalwatfa99@gmail.com
+Expires: 2027-10-10T00:00:00.000Z
+Preferred-Languages: ar, en
+Policy: https://github.com/danial56hd-wq/TRUST-AI/blob/main/SECURITY.md
