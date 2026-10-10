@@ -24,17 +24,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Unzip the archive
+      - name: Unzip TRUST-AI v3.0
         run: |
-          unzip -o TRUST-AI-v1_6.zip -d /tmp/extracted
-          # نسخ محتويات المجلد المستخرج إلى جذر المستودع
-          if [ -d /tmp/extracted/TRUST-AI ]; then
-            cp -r /tmp/extracted/TRUST-AI/* .
+          ZIP="TRUST-AI-v3.0.zip"
+          test -f "$ZIP" || { echo "❌ الملف $ZIP غير موجود"; exit 1; }
+
+          rm -rf /tmp/extracted _site
+          mkdir -p /tmp/extracted _site
+          unzip -q -o "$ZIP" -x "__MACOSX/*" -d /tmp/extracted
+
+          # إذا كان المحتوى داخل مجلد واحد، نستخدم محتواه مباشرة
+          COUNT=$(ls -A /tmp/extracted | wc -l)
+          if [ "$COUNT" -eq 1 ] && [ -d "/tmp/extracted/$(ls -A /tmp/extracted)" ]; then
+            cp -a /tmp/extracted/*/. _site/
           else
-            # في حال كان المحتوى مباشرة داخل الملف المضغوط
-            cp -r /tmp/extracted/* .
+            cp -a /tmp/extracted/. _site/
           fi
-          rm -rf /tmp/extracted
+
+          touch _site/.nojekyll
+          test -f _site/index.html || { echo "❌ index.html غير موجود بعد فك الضغط"; exit 1; }
+
+          echo "✅ تم فك الضغط، المحتويات:"
+          ls -la _site
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
@@ -42,7 +53,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
 
       - name: Deploy to GitHub Pages
         id: deployment
