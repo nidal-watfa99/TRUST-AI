@@ -23,7 +23,9 @@ jobs:
         run: |
           if [ -f TRUST-AI-v3.1.zip ]; then
             unzip -q TRUST-AI-v3.1.zip -d _app
-            cp -r _app/TRUST-AI-v3.0/. .
+            INNER=$(find _app -mindepth 1 -maxdepth 1 -type d | head -1)
+            echo "Extracted folder: $INNER"
+            cp -r "$INNER"/. .
           fi
       - run: npm run check
 
