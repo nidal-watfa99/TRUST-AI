@@ -21,16 +21,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Extract zip if present
+      - name: Prepare app (use newest zip if present)
+        run: bash .github/scripts/prepare-app.sh
+      - name: Run tests & audit
         run: |
-          if [ -f TRUST-AI-v3.1.zip ]; then
-            unzip -q TRUST-AI-v3.1.zip -d _app
-            INNER=$(find _app -mindepth 1 -maxdepth 1 -type d | head -1)
-            echo "Extracted folder: $INNER"
-            cp -r "$INNER"/. .
-            rm -rf _app
-          fi
-      - run: npm run check
+          cd "$APP_DIR"
+          npm run check
 
   deploy:
     name: Publish to GitHub Pages
@@ -46,20 +42,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
-      - name: Extract zip if present
-        run: |
-          if [ -f TRUST-AI-v3.1.zip ]; then
-            unzip -q TRUST-AI-v3.1.zip -d _app
-            INNER=$(find _app -mindepth 1 -maxdepth 1 -type d | head -1)
-            echo "Extracted folder: $INNER"
-            cp -r "$INNER"/. .
-            rm -rf _app
-          fi
+      - name: Prepare app (use newest zip if present)
+        run: bash .github/scripts/prepare-app.sh
       - name: Assemble site
         run: |
+          rm -rf _site
           mkdir -p _site
-          cp -r index.html sw.js manifest.json css js assets .nojekyll .well-known _site/
-          [ -f _headers ] && cp _headers _site/ || true
+          cd "$APP_DIR"
+          cp -r index.html sw.js manifest.json css js assets .nojekyll .well-known "$GITHUB_WORKSPACE/_site/"
+          [ -f _headers ] && cp _headers "$GITHUB_WORKSPACE/_site/" || true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
