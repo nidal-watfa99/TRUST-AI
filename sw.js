@@ -3,7 +3,7 @@
  *   through arbitrary URLs, no cross-origin / API traffic ever touches the cache).
  * - Only stores successful, same-origin ("basic") GET responses.
  * - Old caches are deleted on activation. */
-const CACHE = "trust-ai-v3.0.1";
+const CACHE = "trust-ai-v3.1.0";
 const ASSETS = [
   "./",
   "./index.html",
@@ -30,6 +30,19 @@ const ASSETS = [
   "./assets/icon.svg",
   "./assets/icon-192.svg",
   "./assets/icon-512.svg",
+  "./assets/icon-maskable.svg",
+  "./assets/icon-16.png",
+  "./assets/icon-32.png",
+  "./assets/icon-48.png",
+  "./assets/icon-180.png",
+  "./assets/icon-192.png",
+  "./assets/icon-512.png",
+  "./assets/icon-maskable-192.png",
+  "./assets/icon-maskable-512.png",
+  "./assets/og-image.png",
+  "./js/news-verdict.js",
+  "./js/scam-numbers.js",
+  "./js/phone-ui.js",
 ];
 const ALLOWED = new Set(ASSETS.map((a) => new URL(a, self.location).pathname));
 
