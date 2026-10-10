@@ -1,18 +1,20 @@
-name: Security
+name: Deploy TRUST AI
 
 on:
-  pull_request:
   push:
     branches: [main]
-  schedule:
-    - cron: "17 4 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
 jobs:
-  checks:
-    name: Tests & static audit
+  verify:
+    name: Tests & security audit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,16 +32,36 @@ jobs:
           fi
       - run: npm run check
 
-  codeql:
-    name: CodeQL (JavaScript)
+  deploy:
+    name: Publish to GitHub Pages
+    needs: verify
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - uses: actions/configure-pages@v5
+      - name: Extract zip if present
+        run: |
+          if [ -f TRUST-AI-v3.1.zip ]; then
+            unzip -q TRUST-AI-v3.1.zip -d _app
+            INNER=$(find _app -mindepth 1 -maxdepth 1 -type d | head -1)
+            echo "Extracted folder: $INNER"
+            cp -r "$INNER"/. .
+            rm -rf _app
+          fi
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp -r index.html sw.js manifest.json css js assets .nojekyll .well-known _site/
+          [ -f _headers ] && cp _headers _site/ || true
+      - uses: actions/upload-pages-artifact@v3
         with:
-          languages: javascript-typescript
-          queries: security-extended
-      - uses: github/codeql-action/analyze@v3
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
