@@ -26,8 +26,14 @@ jobs:
 
       - name: Unzip the archive
         run: |
-          unzip -o TRUST-AI-v1.5-secure-ghpages.zip -d /tmp/extracted
-          cp -r /tmp/extracted/TRUST-AI/* .
+          unzip -o TRUST-AI-v1_6.zip -d /tmp/extracted
+          # نسخ محتويات المجلد المستخرج إلى جذر المستودع
+          if [ -d /tmp/extracted/TRUST-AI ]; then
+            cp -r /tmp/extracted/TRUST-AI/* .
+          else
+            # في حال كان المحتوى مباشرة داخل الملف المضغوط
+            cp -r /tmp/extracted/* .
+          fi
           rm -rf /tmp/extracted
 
       - name: Configure GitHub Pages
