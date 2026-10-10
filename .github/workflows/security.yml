@@ -19,13 +19,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Extract zip if present
+      - name: Prepare app (use newest zip if present)
+        run: bash .github/scripts/prepare-app.sh
+      - name: Run tests & audit
         run: |
-          if [ -f TRUST-AI-v3.1.zip ]; then
-            unzip -q TRUST-AI-v3.1.zip -d _app
-            cp -r _app/TRUST-AI-v3.1/. .
-          fi
-      - run: npm run check
+          cd "$APP_DIR"
+          npm run check
 
   codeql:
     name: CodeQL (JavaScript)
