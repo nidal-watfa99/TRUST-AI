@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: "17 4 * * 1"   # weekly deep scan
+    - cron: "17 4 * * 1"
 
 permissions:
   contents: read
@@ -19,7 +19,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm run check
+
+      - name: Extract release zip
+        run: |
+          if [ -f TRUST-AI-v3.1.zip ]; then
+            unzip -q TRUST-AI-v3.1.zip -d _app
+            echo "SRC=_app/TRUST-AI-v3.1" >> "$GITHUB_ENV"
+          else
+            echo "SRC=." >> "$GITHUB_ENV"
+          fi
+
+      - name: Run checks
+        working-directory: ${{ env.SRC }}
+        run: npm run check
 
   codeql:
     name: CodeQL (JavaScript)
