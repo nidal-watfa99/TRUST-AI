@@ -16,26 +16,18 @@ jobs:
   verify:
     name: Tests & security audit
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-
-      - name: Extract release zip
+      - name: Extract zip if present
         run: |
           if [ -f TRUST-AI-v3.1.zip ]; then
             unzip -q TRUST-AI-v3.1.zip -d _app
-            echo "SRC=_app/TRUST-AI-v3.1" >> "$GITHUB_ENV"
-          else
-            echo "SRC=." >> "$GITHUB_ENV"
+            cp -r _app/TRUST-AI-v3.1/. .
           fi
-
-      - name: Run checks
-        working-directory: ${{ env.SRC }}
-        run: npm run check
+      - run: npm run check
 
   deploy:
     name: Publish to GitHub Pages
@@ -51,27 +43,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
-
-      - name: Extract release zip
+      - name: Extract zip if present
         run: |
           if [ -f TRUST-AI-v3.1.zip ]; then
             unzip -q TRUST-AI-v3.1.zip -d _app
-            echo "SRC=_app/TRUST-AI-v3.1" >> "$GITHUB_ENV"
-          else
-            echo "SRC=." >> "$GITHUB_ENV"
+            cp -r _app/TRUST-AI-v3.1/. .
           fi
-
       - name: Assemble site
         run: |
           mkdir -p _site
-          cp -r "$SRC/index.html" "$SRC/sw.js" "$SRC/manifest.json" \
-                "$SRC/css" "$SRC/js" "$SRC/assets" \
-                "$SRC/.nojekyll" "$SRC/.well-known" _site/
-          [ -f "$SRC/_headers" ] && cp "$SRC/_headers" _site/ || true
-
+          cp -r index.html sw.js manifest.json css js assets .nojekyll .well-known _site/
+          [ -f _headers ] && cp _headers _site/ || true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
-
       - id: deployment
         uses: actions/deploy-pages@v4
