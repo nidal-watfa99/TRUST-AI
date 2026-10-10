@@ -26,6 +26,7 @@ jobs:
             INNER=$(find _app -mindepth 1 -maxdepth 1 -type d | head -1)
             echo "Extracted folder: $INNER"
             cp -r "$INNER"/. .
+            rm -rf _app
           fi
       - run: npm run check
 
