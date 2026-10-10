@@ -23,10 +23,24 @@ jobs:
           node-version: 22
       - name: Prepare app (use newest zip if present)
         run: bash .github/scripts/prepare-app.sh
-      - name: Run tests & audit
+      - name: Run tests & audit (report errors clearly)
+        continue-on-error: true
         run: |
           cd "$APP_DIR"
-          npm run check
+          set +e
+          npm run check > "$GITHUB_WORKSPACE/check.log" 2>&1
+          code=$?
+          tail -n 60 "$GITHUB_WORKSPACE/check.log"
+          if [ "$code" -ne 0 ]; then
+            {
+              echo "## Tests/audit FAILED (exit $code)"
+              echo '```'
+              grep -nE "✗|Error:|Cannot find|ERR_|FAIL" "$GITHUB_WORKSPACE/check.log" | head -30
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            grep -E "✗|Error:|Cannot find|ERR_|FAIL" "$GITHUB_WORKSPACE/check.log" | head -10 | while IFS= read -r line; do echo "::error::$line"; done
+          fi
+          exit "$code"
 
   deploy:
     name: Publish to GitHub Pages
