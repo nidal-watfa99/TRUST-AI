@@ -16,16 +16,33 @@ jobs:
   verify:
     name: Tests & security audit
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Extract zip
-        run: unzip -q TRUST-AI-v3.1.zip -d _app
+
+      # Prefer the release zip when present (single source of truth)
+      - name: Extract release zip (if present)
+        id: zip
+        run: |
+          if [ -f TRUST-AI-v3.1.zip ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            unzip -q TRUST-AI-v3.1.zip -d _app
+            echo "Using contents of TRUST-AI-v3.1.zip"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No release zip — using repository root"
+          fi
+
       - name: Run checks
-        working-directory: _app/TRUST-AI-v3.0
-        run: npm run check
+        run: |
+          if [ "${{ steps.zip.outputs.found }}" = "true" ]; then
+            cd _app/TRUST-AI-v3.1
+          fi
+          npm run check
 
   deploy:
     name: Publish to GitHub Pages
@@ -41,15 +58,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
-      - name: Extract zip
-        run: unzip -q TRUST-AI-v3.1.zip -d _app
-      - name: Assemble site
-        working-directory: _app/TRUST-AI-v3.0
+
+      - name: Extract release zip (if present)
+        id: zip
         run: |
-          mkdir ../../_site
-          cp -r index.html sw.js manifest.json css js assets .nojekyll .well-known ../../_site/
+          if [ -f TRUST-AI-v3.1.zip ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+            unzip -q TRUST-AI-v3.1.zip -d _app
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          if [ "${{ steps.zip.outputs.found }}" = "true" ]; then
+            SRC="_app/TRUST-AI-v3.1"
+          else
+            SRC="."
+          fi
+          # Publish ONLY runtime files — tests, scripts, CI config and env examples never go public.
+          cp -r "$SRC/index.html" "$SRC/sw.js" "$SRC/manifest.json" \
+                "$SRC/css" "$SRC/js" "$SRC/assets" \
+                "$SRC/.nojekyll" "$SRC/.well-known" _site/
+          # Optional headers for Netlify / Cloudflare Pages (harmless on GitHub Pages)
+          [ -f "$SRC/_headers" ] && cp "$SRC/_headers" _site/ || true
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+
       - id: deployment
         uses: actions/deploy-pages@v4
