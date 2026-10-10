@@ -11,8 +11,6 @@ import {
   securityLog,
 } from "./security.js";
 import { getStats } from "./fraud-db.js";
-import { profileNumber } from "./scam-numbers.js";
-import { storageGetJSON } from "./security.js";
 
 /** Common country calling codes (subset relevant to MENA + global) */
 const CALLING_CODES = [
@@ -155,16 +153,6 @@ export function checkPhone(rawInput) {
     details_en.push("Insufficient local indicators to judge. Treat any request for money or verification codes with caution.");
   }
 
-  // v3.1: caller dossier (foreign-number scam intelligence + this device's own reports)
-  let localReports = [];
-  try { const r = storageGetJSON("trustai_local_reports", { fallback: [], maxBytes: 400_000 }); if (Array.isArray(r)) localReports = r; } catch (_) {}
-  const profile = profileNumber(rawInput, { localReports });
-  if (profile.ok) {
-    const rank = { unknown: 0, low: 1, medium: 2, high: 3 };
-    if ((rank[profile.level] || 0) > (rank[level] || 0)) level = profile.level;
-    if (profile.level === "high" && level !== "high") level = "high";
-  }
-
   securityLog("phone_check", { hasCountry: !!country, level, indicators: indicators.length });
 
   return {
@@ -175,7 +163,6 @@ export function checkPhone(rawInput) {
       ? { code: country.code, iso: country.iso, name_ar: country.name_ar, name_en: country.name_en }
       : null,
     indicators,
-    profile: profile.ok ? profile : null,
     title_ar:
       level === "high"
         ? "مؤشرات تستدعي الحذر الشديد"

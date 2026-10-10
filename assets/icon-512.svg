@@ -1,19 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="TRUST AI">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="96" fill="#0a0f1a"/>
   <defs>
-    <radialGradient id="bg" cx="30%" cy="22%" r="95%"><stop offset="0" stop-color="#1b3a63"/><stop offset=".55" stop-color="#0c1830"/><stop offset="1" stop-color="#050a14"/></radialGradient>
-    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a5f3fc"/><stop offset=".5" stop-color="#22d3ee"/><stop offset="1" stop-color="#0e7490"/></linearGradient>
-    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0f3a52"/><stop offset="1" stop-color="#071a2b"/></linearGradient>
-    <linearGradient id="tick" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#67e8f9"/></linearGradient>
-    <radialGradient id="halo" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#22d3ee" stop-opacity=".35"/><stop offset="1" stop-color="#22d3ee" stop-opacity="0"/></radialGradient>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#67e8f9"/>
+      <stop offset="50%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#0891b2"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="40%" stop-color="#ffffff" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <rect x="3" y="3" width="506" height="506" rx="109" fill="none" stroke="#67e8f9" stroke-opacity=".22" stroke-width="3"/>
-  <circle cx="256" cy="262" r="230" fill="url(#halo)"/>
-    <g transform="translate(256 262) scale(1.0)">
-      <path d="M0-205 L158-146 L158 12 C158 112 92 172 0 206 C-92 172-158 112-158 12 L-158-146 Z" fill="url(#rim)"/>
-      <path d="M0-182 L138-131 L138 10 C138 98 80 151 0 181 C-80 151-138 98-138 10 L-138-131 Z" fill="url(#face)"/>
-      <path d="M0-182 L138-131 L138-40 C70-62-70-62-138-40 L-138-131 Z" fill="#fff" opacity=".10"/>
-      <path d="M-62 4 L-18 50 L68-48" fill="none" stroke="#04202b" stroke-opacity=".35" stroke-width="40" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 7)"/>
-      <path d="M-62 4 L-18 50 L68-48" fill="none" stroke="url(#tick)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
-    </g>
+  <path d="M256 56 L400 112 L400 256 C400 368 328 432 256 464 C184 432 112 368 112 256 L112 112 Z" fill="url(#g)"/>
+  <path d="M256 80 L380 128 L380 252 C380 348 328 404 256 428 C184 404 132 348 132 252 L132 128 Z" fill="url(#shine)"/>
+  <path d="M192 256 L240 304 L336 192" stroke="#0a0f1a" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <path d="M192 256 L240 304 L336 192" stroke="#ecfeff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
 </svg>

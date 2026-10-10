@@ -8,8 +8,6 @@ import { analyze, detectSensitivePaste } from "./risk-engine.js";
 import {
   initAIProvider,
   clearAIProvider,
-  saveAIConfig,
-  restoreAIProvider,
   isAIAvailable,
   isVisionAvailable,
   getAIStatus,
@@ -45,8 +43,6 @@ import {
   getMeta,
 } from "./fraud-db.js";
 import { checkPhone } from "./phone-check.js";
-import { renderPhoneDossier, renderScamNumberCards } from "./phone-ui.js";
-import { searchScamNumbers, listScamNumberCards } from "./scam-numbers.js";
 import { getQuestnetDossier } from "./questnet.js";
 import { getVictimHelp } from "./victim-help.js";
 
@@ -67,7 +63,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initI18n();
   initTheme();
   initElderly();
-  restoreAIProvider();
   bindEvents();
   bindImageFallbacks();
   bindSensitiveWatch();
@@ -79,17 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updateModeBanner();
   initClient();
   bindModelsPanel();
-  handleLaunchShortcut();
 });
-
-/** PWA shortcuts (manifest "shortcuts"): ?open=news | phone */
-function handleLaunchShortcut() {
-  try {
-    const which = new URLSearchParams(location.search).get("open");
-    if (which === "phone") openPhoneCheck();
-    else if (which === "news") openClient("", "news");
-  } catch (_) {}
-}
 
 function bindEvents() {
   $("#lang-ar")?.addEventListener("click", () => switchLang("ar"));
@@ -716,16 +701,6 @@ function showAIResult(ok, msg) {
   box.textContent = msg;
 }
 
-function syncModelSelectToStatus() {
-  const sel = $("#ai-model");
-  const st = getAIStatus();
-  if (!sel || !st.modelId || sel.value === st.modelId) return false;
-  sel.value = st.modelId;
-  sel.dataset.touched = "";
-  renderModelsPanel();
-  return true;
-}
-
 async function onSaveAI() {
   const key = ($("#ai-key")?.value || "").trim();
   const modelId = $("#ai-model")?.value;
@@ -735,12 +710,10 @@ async function onSaveAI() {
     return;
   }
   initAIProvider({ apiKey: key, modelId, customModel });
-  const switched = syncModelSelectToStatus();
-  showAIResult(true, (switched ? (getLang() === "ar" ? "تم اختيار مزوّد المفتاح تلقائيًا. " : "Provider chosen from your key. ") : "") + (getLang() === "ar" ? "جارٍ اختبار الاتصال…" : "Testing connection…"));
+  showAIResult(true, getLang() === "ar" ? "جارٍ اختبار الاتصال…" : "Testing connection…");
   const res = await testConnection();
   updateAIStatusUI();
   if (res.ok) {
-    saveAIConfig();
     if ($("#ai-key")) $("#ai-key").value = "";
     showAIResult(true, t("connectionOk"));
     showToast(t("aiConnected"));
@@ -765,13 +738,12 @@ async function onTestAI() {
   const key = ($("#ai-key")?.value || "").trim();
   const modelId = $("#ai-model")?.value;
   const customModel = ($("#ai-custom-model")?.value || "").trim();
-  if (validateApiKey(key).ok) { initAIProvider({ apiKey: key, modelId, customModel }); syncModelSelectToStatus(); }
+  if (validateApiKey(key).ok) initAIProvider({ apiKey: key, modelId, customModel });
   const btn = $("#btn-test-ai");
   if (btn) btn.disabled = true;
   showAIResult(true, getLang() === "ar" ? "جارٍ اختبار الاتصال…" : "Testing connection…");
   const res = await testConnection();
   if (btn) btn.disabled = false;
-  if (res.ok) saveAIConfig();
   showAIResult(res.ok, res.ok ? t("connectionOk") : `${t("connectionFail")}: ${res.error || ""}`);
   updateAIStatusUI();
 }
@@ -974,120 +946,44 @@ function toggleTheme() {
 }
 
 // ── PWA Install to desktop ───────────────────────────────────────────────
-// The install button is ALWAYS visible (unless the app already runs installed). When the browser
-// offers a native prompt we use it; otherwise we open a how-to for this exact browser/OS, plus a
-// downloadable desktop shortcut for Windows.
 
 let deferredInstallPrompt = null;
 
-function isStandalone() {
-  return window.matchMedia("(display-mode: standalone)").matches
-    || window.matchMedia("(display-mode: window-controls-overlay)").matches
-    || window.navigator.standalone === true;
-}
-
 function initInstallPrompt() {
-  const btn = $("#btn-install");
-  const cta = $("#btn-install-cta");
   window.addEventListener("beforeinstallprompt", (e) => {
     e.preventDefault();
     deferredInstallPrompt = e;
+    const btn = $("#btn-install");
+    if (btn) {
+      btn.classList.remove("hidden");
+      btn.title = t("installHint");
+    }
   });
   window.addEventListener("appinstalled", () => {
     deferredInstallPrompt = null;
-    btn?.classList.add("hidden");
-    cta?.classList.add("hidden");
-    closeInstallHelp();
+    $("#btn-install")?.classList.add("hidden");
     showToast(t("installOk"));
   });
-  if (isStandalone()) {
-    btn?.classList.add("hidden");
-    cta?.classList.add("hidden");
-  } else {
-    btn?.classList.remove("hidden");
-    cta?.classList.remove("hidden");
+  // Already installed (standalone)
+  if (window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone) {
+    $("#btn-install")?.classList.add("hidden");
   }
-  cta?.addEventListener("click", triggerInstall);
-  $("#install-close")?.addEventListener("click", closeInstallHelp);
-  $("#install-backdrop")?.addEventListener("click", closeInstallHelp);
-  $("#btn-install-native")?.addEventListener("click", nativeInstall);
-  $("#btn-install-shortcut")?.addEventListener("click", downloadShortcut);
-}
-
-function detectPlatform() {
-  const ua = navigator.userAgent || "";
-  const ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  const android = /Android/i.test(ua);
-  const mac = /Macintosh/.test(ua) && !ios;
-  const win = /Windows/i.test(ua);
-  const edge = /Edg\//.test(ua);
-  const firefox = /Firefox|FxiOS/.test(ua);
-  const safari = /Safari/.test(ua) && !/Chrome|Chromium|CriOS|Edg\/|OPR\//.test(ua);
-  return { ios, android, mac, win, edge, firefox, safari };
-}
-
-function installSteps() {
-  const p = detectPlatform();
-  const ar = getLang() === "ar";
-  if (p.ios) return ar
-    ? ["افتح الصفحة في Safari", "اضغط زر المشاركة ⬆︎ في الأسفل", "اختر «إضافة إلى الشاشة الرئيسية»", "اضغط «إضافة» — ستظهر الأيقونة على شاشتك"]
-    : ["Open this page in Safari", "Tap the Share button ⬆︎", "Choose “Add to Home Screen”", "Tap “Add” — the icon appears on your Home Screen"];
-  if (p.android) return ar
-    ? ["اضغط قائمة المتصفح ⋮", "اختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية»", "أكّد — ستظهر الأيقونة بين تطبيقاتك"]
-    : ["Tap the browser menu ⋮", "Choose “Install app” or “Add to Home screen”", "Confirm — the icon appears among your apps"];
-  if (p.mac && p.safari) return ar
-    ? ["من قائمة «ملف» في Safari اختر «إضافة إلى Dock»", "أكّد الاسم والأيقونة", "سيظهر التطبيق في Dock وفي مجلد التطبيقات"]
-    : ["In Safari choose File → Add to Dock", "Confirm the name and icon", "The app appears in your Dock and Applications"];
-  if (p.firefox) return ar
-    ? ["Firefox على سطح المكتب لا يدعم تثبيت التطبيقات", "افتح هذا الرابط في Chrome أو Edge ثم اضغط «تثبيت»", "أو نزّل اختصار سطح المكتب بالزر أدناه (ويندوز)"]
-    : ["Desktop Firefox cannot install web apps", "Open this link in Chrome or Edge and press Install", "Or download the desktop shortcut below (Windows)"];
-  return ar
-    ? [p.edge ? "اضغط ⋯ ← «التطبيقات» ← «تثبيت هذا الموقع كتطبيق»" : "اضغط ⋮ ← «حفظ ومشاركة» ← «تثبيت TRUST AI»", "أو اضغط أيقونة التثبيت ⊕ في شريط العنوان", "أكّد — ستظهر الأيقونة على سطح المكتب وقائمة ابدأ"]
-    : [p.edge ? "Click ⋯ → Apps → Install this site as an app" : "Click ⋮ → Save and share → Install TRUST AI", "Or click the install icon ⊕ in the address bar", "Confirm — the icon appears on your desktop and Start menu"];
-}
-
-function openInstallHelp() {
-  const modal = $("#install-modal");
-  if (!modal) return;
-  const list = $("#install-steps");
-  if (list) list.innerHTML = installSteps().map((s) => `<li>${escapeHtml(s)}</li>`).join("");
-  $("#btn-install-native")?.classList.toggle("hidden", !deferredInstallPrompt);
-  $("#btn-install-shortcut")?.classList.toggle("hidden", !detectPlatform().win);
-  modal.classList.remove("hidden");
-  applyTranslations();
-}
-
-function closeInstallHelp() {
-  $("#install-modal")?.classList.add("hidden");
-}
-
-async function nativeInstall() {
-  if (!deferredInstallPrompt) return;
-  deferredInstallPrompt.prompt();
-  try {
-    const choice = await deferredInstallPrompt.userChoice;
-    if (choice?.outcome === "accepted") showToast(t("installOk"));
-  } catch (_) {}
-  deferredInstallPrompt = null;
-  closeInstallHelp();
 }
 
 async function triggerInstall() {
-  if (isStandalone()) { showToast(t("installOk")); return; }
-  if (deferredInstallPrompt) { await nativeInstall(); return; }
-  openInstallHelp();
-}
-
-function downloadShortcut() {
-  const url = window.location.href.split("?")[0].split("#")[0];
-  const blob = new Blob([`[InternetShortcut]\r\nURL=${url}\r\n`], { type: "application/octet-stream" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "TRUST AI.url";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  if (!deferredInstallPrompt) {
+    showToast(t("installHint"));
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  try {
+    const choice = await deferredInstallPrompt.userChoice;
+    if (choice?.outcome === "accepted") {
+      showToast(t("installOk"));
+    }
+  } catch (_) {}
+  deferredInstallPrompt = null;
+  $("#btn-install")?.classList.add("hidden");
 }
 
 // ── Share app (Web Share API — Android multi-share menu) ─────────────────
@@ -1422,19 +1318,7 @@ function openFraudDb() {
   window.scrollTo({ top: 0, behavior: "smooth" });
   renderFraudStats();
   renderFraudList(listEntities());
-  renderScamNumbers("");
   applyTranslations();
-}
-
-function renderScamNumbers(q) {
-  const box = $("#fraud-numbers");
-  if (!box) return;
-  const lang = getLang();
-  const query = String(q || "").trim();
-  const cards = query.length >= 2 ? searchScamNumbers(query) : listScamNumberCards();
-  box.innerHTML = cards.length
-    ? `<h3 class="pn-section-title">${escapeHtml(lang === "ar" ? "أرقام مشبوهة تتصل من الخارج (نطاقات وأنماط موثّقة)" : "Suspicious foreign callers (documented ranges & patterns)")}</h3>` + renderScamNumberCards(cards, lang)
-    : "";
 }
 
 function renderFraudStats() {
@@ -1480,7 +1364,6 @@ function onFraudSearch() {
   const q = $("#fraud-search")?.value || "";
   const items = q.trim().length >= 2 ? searchEntities(q) : listEntities();
   renderFraudList(items);
-  renderScamNumbers(q);
 }
 
 async function onFraudUpdate() {
@@ -1529,16 +1412,6 @@ function onPhoneRun() {
   if (!el) return;
   el.classList.remove("hidden");
   const lang = getLang();
-  if (res.ok && res.profile) {
-    el.innerHTML = renderPhoneDossier(res.profile, lang);
-    try {
-      const p = res.profile;
-      saveToHistory("📞 " + p.display + (p.country ? " · " + (lang === "ar" ? p.country.name_ar : p.country.name_en) : ""), {
-        score: p.score, level: p.level === "high" ? "severe" : p.level, mode: "offline",
-      });
-    } catch (_) {}
-    return;
-  }
   const title = lang === "ar" ? res.title_ar : res.title_en;
   const details = lang === "ar" ? res.details_ar : res.details_en;
   const disc = lang === "ar" ? res.disclaimer_ar : res.disclaimer_en;

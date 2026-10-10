@@ -5,8 +5,7 @@
  * professional SVG charts. Offline engine first, optional model layer second.
  */
 import { buildDossier, mergeAI, normalizeUniversal, dossierToText, KINDS } from "./client-engine.js";
-import { analyzeUniversal, isAIAvailable, isVisionAvailable, getAIStatus, verifyNewsWithAI, searchFactChecks } from "./ai-provider.js";
-import { normalizeNewsVerdict, wantsNewsVerdict } from "./news-verdict.js";
+import { analyzeUniversal, isAIAvailable, isVisionAvailable, getAIStatus } from "./ai-provider.js";
 import { detectSensitivePaste } from "./risk-engine.js";
 import { renderSourceReport } from "./source-report.js";
 import { getLang, t } from "./i18n.js";
@@ -27,7 +26,6 @@ const state = {
   opener: null,
   exampleIdx: 0,
   running: false,
-  news: null, // { status: off|pending|done|error, data, error }
 };
 
 const EXAMPLES = [
@@ -76,7 +74,7 @@ export function initClient() {
   renderStatic();
 }
 
-export function openClient(prefill, kind) {
+export function openClient(prefill) {
   const scr = $("#client-screen");
   if (!scr) return;
   state.opener = document.activeElement;
@@ -86,7 +84,6 @@ export function openClient(prefill, kind) {
   document.body.style.overflow = "hidden";
   const app = $("#app"); if (app) app.inert = true;
   renderStatic();
-  if (kind && ["auto", "url", "name", "news", "message"].includes(kind)) { state.kind = kind; renderStatic(); }
   if (typeof prefill === "string" && prefill) { $("#cl-text").value = prefill; watchSensitive(); }
   setTimeout(() => $("#cl-text")?.focus(), 60);
 }
@@ -213,7 +210,7 @@ function renderTray() {
 function clearAll() {
   $("#cl-text").value = "";
   state.images = [];
-  state.dossier = null; state.ai = null; state.aiError = null; state.input = null; state.news = null;
+  state.dossier = null; state.ai = null; state.aiError = null; state.input = null;
   $("#cl-out").innerHTML = "";
   $("#cl-progress")?.classList.add("hidden");
   watchSensitive();
@@ -250,11 +247,8 @@ async function run() {
     const vision = isVisionAvailable();
     const d = buildDossier({ text, images: state.input.images.length, lang: getLang(), forcedKind: state.kind, visionOn: vision, aiOn: isAIAvailable() });
     state.dossier = d;
-    state.news = wantsNewsVerdict(d) ? { status: isAIAvailable() ? "pending" : "off" } : null;
     render(d, { aiPending: isAIAvailable() });
     $("#cl-out").scrollIntoView({ behavior: "smooth", block: "start" });
-
-    const newsJob = state.news?.status === "pending" ? runNewsVerdict(text) : null;
 
     if (isAIAvailable()) {
       setProgress(1);
@@ -267,7 +261,6 @@ async function run() {
         state.ai.usedImages = !!res.usedImages;
       } else if (res?.error) state.aiError = res.error;
     }
-    if (newsJob) await newsJob;
     setProgress(2);
     await sleep(120);
     rebuild();
@@ -284,26 +277,10 @@ async function run() {
   }
 }
 
-async function runNewsVerdict(text) {
-  const lang = getLang();
-  try {
-    const factChecks = await searchFactChecks(text, lang);
-    const res = await verifyNewsWithAI({ text, images: state.input?.images || [], lang, factChecks, today: new Date().toISOString().slice(0, 10) });
-    if (res?.raw) {
-      const data = normalizeNewsVerdict(res.raw, { sources: res.sources, factChecks, grounded: res.grounded, provider: res.provider, model: res.model });
-      state.news = data ? { status: "done", data } : { status: "error", error: lang === "ar" ? "تعذّر فهم نتيجة التحقق." : "Could not read the verification result." };
-    } else state.news = { status: "error", error: res?.error || (lang === "ar" ? "تعذّر التحقق." : "Verification failed.") };
-  } catch (e) {
-    state.news = { status: "error", error: String(e?.message || e) };
-  }
-  if (state.dossier) render(state.dossier, {});
-}
-
 function rebuild() {
   const inp = state.input;
   const d0 = buildDossier({ text: inp.text, images: inp.images.length, lang: getLang(), forcedKind: inp.forcedKind, visionOn: isVisionAvailable(), aiOn: isAIAvailable() });
   state.dossier = state.ai ? mergeAI(d0, state.ai) : { ...d0, aiError: state.aiError };
-  state.dossier.newsVerdict = state.news?.status === "done" ? state.news.data : null;
   render(state.dossier, {});
 }
 
@@ -330,9 +307,6 @@ function render(d, { aiPending = false } = {}) {
   const crit = d.warnings.filter((w) => w.level === "critical");
 
   const html = [];
-
-  /* 0. News verdict (true / false with evidence) */
-  if (state.news) html.push(newsVerdictSection(state.news, d));
 
   /* 1. Verdict */
   html.push(`
@@ -454,8 +428,6 @@ function render(d, { aiPending = false } = {}) {
     }
   });
   $("#cl-open-models")?.addEventListener("click", () => document.dispatchEvent(new CustomEvent("trustai:open-models")));
-  $("#nv-retry")?.addEventListener("click", () => { state.news = { status: "pending" }; render(d, {}); runNewsVerdict(state.input?.text || ""); });
-  $("#nv-open-models")?.addEventListener("click", () => document.dispatchEvent(new CustomEvent("trustai:open-models")));
   $("#cl-copy")?.addEventListener("click", async () => {
     try { await navigator.clipboard.writeText(dossierToText(d, lang)); toast(u.copied); } catch (_) { toast(t("shareFail"), true); }
   });
@@ -634,102 +606,6 @@ function arcSvg(sentences, u) {
   }).join("");
   const yTh = base - 0.5 * maxH;
   return `<div class="cl-scrollx"><svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="cl-svg cl-arc" role="img" aria-label="${esc(u.arcTitle)}"><line x1="${padL - 6}" y1="${base}" x2="${W - 6}" y2="${base}" stroke="var(--border)"/><line x1="${padL - 6}" y1="${yTh}" x2="${W - 6}" y2="${yTh}" stroke="var(--high)" stroke-dasharray="4 4" opacity=".6"/><text x="2" y="${yTh + 3}" class="cl-tick">50</text>${bars}</svg></div>`;
-}
-
-
-/* ── News verdict (صادق / كاذب) ─────────────────────────────────────────── */
-
-const NV = {
-  ar: {
-    title: "حكم التحقق من الخبر", true: "خبر صادق", false: "خبر كاذب", unproven: "غير مثبت — لا يوجد دليل كافٍ للحكم",
-    trueSub: "أكّدته أدلة موثوقة", falseSub: "فنّدته أدلة موثوقة", unprovenSub: "لن نصفه بالصدق أو الكذب دون دليل",
-    conf: "درجة اليقين", basis: { evidence: "أدلة من بحث حيّ وسجلات مدقّقي الحقائق", model: "معرفة النموذج فقط (بلا بحث حيّ) — أقل موثوقية" },
-    explain: "الشرح التفصيلي", balance: "ميزان الأدلة", sup: "تؤيّد", ref: "تفنّد", ctx: "سياق", claims: "الادعاءات واحداً واحداً", evid: "الأدلة والمصادر",
-    cred: "مؤشرات المصداقية", timeline: "التسلسل الزمني", images: "الصور المرفقة", open: "فتح المصدر", rating: "تقييم المدقّق", limits: "حدود التحقق",
-    pending: "جارٍ البحث عن الأدلة والمصادر…", retry: "إعادة المحاولة", none: "لا توجد أدلة مرفقة",
-    offTitle: "الحكم «صادق/كاذب» يحتاج بحثاً بالأدلة", offBody: "اربط نموذج Gemini (مجاني) ليبحث التطبيق في الويب الحيّ وسجلات مدقّقي الحقائق ويصدر حكماً مدعوماً بمصادر. بدون ذلك لا يستطيع التطبيق الجزم بصحة خبر، وهو لا يخمّن.",
-    connect: "ربط نموذج", reverse: "ابحث عن أصل الصورة", noteConflict: "تعارضت الأدلة، لذلك لم نصدر حكماً قاطعاً.",
-    noteNoSources: "لم نجد مصدراً قابلاً للفتح يسند الحكم، فلم نعتمده.", noteModelOnly: "اعتمد النموذج على معرفته فقط دون أدلة كافية، فلم نعتمد الحكم.",
-    supports: "يؤيّد", refutes: "يفنّد", context: "سياق", claimV: { true: "صحيح", false: "كاذب", unproven: "غير مثبت" },
-  },
-  en: {
-    title: "News verification verdict", true: "TRUE news", false: "FALSE news", unproven: "Unproven — not enough evidence to judge",
-    trueSub: "Confirmed by reliable evidence", falseSub: "Refuted by reliable evidence", unprovenSub: "We will not call it true or false without evidence",
-    conf: "Confidence", basis: { evidence: "Live web search & fact-checker records", model: "Model knowledge only (no live search) — less reliable" },
-    explain: "Detailed explanation", balance: "Evidence balance", sup: "Support", ref: "Refute", ctx: "Context", claims: "Claim by claim", evid: "Evidence & sources",
-    cred: "Credibility indicators", timeline: "Timeline", images: "Attached images", open: "Open source", rating: "Fact-checker rating", limits: "Limits of verification",
-    pending: "Searching for evidence and sources…", retry: "Retry", none: "No evidence attached",
-    offTitle: "A true/false verdict needs evidence search", offBody: "Connect a (free) Gemini model so the app can search the live web and fact-checker records and issue a source-backed verdict. Without it the app cannot vouch for a news item — and it does not guess.",
-    connect: "Connect a model", reverse: "Find the image's origin", noteConflict: "Evidence conflicted, so no firm verdict was issued.",
-    noteNoSources: "No openable source supported the verdict, so it was not adopted.", noteModelOnly: "The model relied on memory only without enough evidence, so the verdict was not adopted.",
-    supports: "Supports", refutes: "Refutes", context: "Context", claimV: { true: "True", false: "False", unproven: "Unproven" },
-  },
-};
-const NV_COLOR = { true: "#22c55e", false: "#ef4444", unproven: "#94a3b8" };
-
-function nvIcon(v, color) {
-  const mark = v === "true" ? '<path d="M-26 2 L-9 20 L28 -20" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>'
-    : v === "false" ? '<path d="M-22 -22 L22 22 M22 -22 L-22 22" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round"/>'
-    : '<path d="M-14 -16 C-14 -34 16 -34 16 -14 C16 -2 0 -4 0 10" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round"/><circle cx="0" cy="28" r="6.5" fill="#fff"/>';
-  return `<svg viewBox="0 0 120 120" class="nv-icon" role="img" aria-hidden="true"><circle cx="60" cy="60" r="56" fill="${color}" fill-opacity=".18"/><circle cx="60" cy="60" r="46" fill="${color}"/><g transform="translate(60 60)">${mark}</g></svg>`;
-}
-
-function nvRing(pct, color) {
-  const r = 34, C = 2 * Math.PI * r, len = (Math.max(0, Math.min(100, pct)) / 100) * C;
-  return `<svg viewBox="0 0 90 90" class="nv-ring" role="img" aria-label="${pct}%"><circle cx="45" cy="45" r="${r}" fill="none" stroke="var(--border)" stroke-width="9"/><circle cx="45" cy="45" r="${r}" fill="none" stroke="${color}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${len.toFixed(1)} ${(C - len).toFixed(1)}" transform="rotate(-90 45 45)"/><text x="45" y="51" text-anchor="middle" class="nv-ring-num" fill="${color}">${pct}%</text></svg>`;
-}
-
-function newsVerdictSection(n, d) {
-  const lang = getLang();
-  const s = NV[lang] || NV.ar;
-  if (n.status === "off") {
-    return `<section class="cl-card nv-card nv-off" aria-labelledby="nv-h"><h3 id="nv-h" class="cl-h">📰 ${esc(s.offTitle)}</h3><p class="cl-p">${esc(s.offBody)}</p><button type="button" class="btn btn-primary" id="nv-open-models">${esc(s.connect)}</button></section>`;
-  }
-  if (n.status === "pending") {
-    return `<section class="cl-card nv-card" aria-labelledby="nv-h"><h3 id="nv-h" class="cl-h">📰 ${esc(s.title)}</h3><p class="cl-p"><span class="spinner inline" aria-hidden="true"></span> ${esc(s.pending)}</p></section>`;
-  }
-  if (n.status === "error") {
-    return `<section class="cl-card nv-card nv-err"><h3 class="cl-h">📰 ${esc(s.title)}</h3><p class="error-text">${esc(n.error || "")}</p><button type="button" class="btn btn-secondary" id="nv-retry">${esc(s.retry)}</button></section>`;
-  }
-  const v = n.data;
-  const col = NV_COLOR[v.verdict];
-  const sub = v.verdict === "true" ? s.trueSub : v.verdict === "false" ? s.falseSub : s.unprovenSub;
-  const b = v.balance;
-  const tot = Math.max(1, b.supports + b.refutes + b.context);
-  const seg = (k, cnt, c) => (cnt ? `<i class="nv-seg" style="width:${(cnt / tot) * 100}%;background:${c}" title="${esc(s[k])}: ${cnt}"></i>` : "");
-  const stanceLabel = { supports: s.supports, refutes: s.refutes, context: s.context };
-  const stanceColor = { supports: "#22c55e", refutes: "#ef4444", context: "#94a3b8" };
-  const note = v.notes.includes("conflict") ? s.noteConflict : v.notes.includes("no_sources") ? s.noteNoSources : v.notes.includes("model_only") ? s.noteModelOnly : "";
-  const safe = (u) => (isSafeUrl(u) ? u : "");
-
-  const claims = v.claims.length ? `<h4 class="cl-h4">${esc(s.claims)}</h4><ul class="nv-claims">${v.claims.map((c) => `<li class="nv-claim" style="--c:${NV_COLOR[c.verdict]}"><span class="nv-chip" style="background:${NV_COLOR[c.verdict]}">${esc(s.claimV[c.verdict])}</span><div><p>${esc(c.claim)}</p>${c.explanation ? `<small>${esc(c.explanation)}</small>` : ""}${c.evidence.length ? `<small class="muted"> · ${c.evidence.map((i) => "#" + (i + 1)).join(" ")}</small>` : ""}</div></li>`).join("")}</ul>` : "";
-
-  const evid = v.evidence.length ? `<h4 class="cl-h4">${esc(s.evid)}</h4><ul class="nv-evid">${v.evidence.map((e, i) => `<li class="nv-ev" style="--c:${stanceColor[e.stance]}">
-      <span class="nv-badge" aria-hidden="true">${esc((e.publisher || "?").trim().charAt(0).toUpperCase())}</span>
-      <div class="nv-ev-body"><div class="nv-ev-top"><strong>#${i + 1} ${esc(e.publisher || "—")}</strong><span class="nv-chip" style="background:${stanceColor[e.stance]}">${esc(stanceLabel[e.stance])}</span>${e.rating ? `<span class="nv-chip rating">${esc(s.rating)}: ${esc(e.rating)}</span>` : ""}</div>
-      ${e.title ? `<p class="nv-ev-title">${esc(e.title)}</p>` : ""}${e.summary ? `<p class="nv-ev-sum">${esc(e.summary)}</p>` : ""}
-      <div class="nv-ev-meta">${e.date ? `<span>${esc(e.date)}</span>` : ""}${safe(e.url) ? `<a href="${esc(safe(e.url))}" target="_blank" rel="noopener noreferrer">${esc(s.open)} ↗</a>` : ""}</div></div></li>`).join("")}</ul>` : `<p class="muted">${esc(s.none)}</p>`;
-
-  const cred = v.credibility ? `<h4 class="cl-h4">${esc(s.cred)}</h4>${credBars(v.credibility, ui())}` : "";
-  const tl = v.timeline.length ? `<h4 class="cl-h4">${esc(s.timeline)}</h4><ol class="nv-timeline">${v.timeline.map((x) => `<li><b>${esc(x.date)}</b><span>${esc(x.event)}</span></li>`).join("")}</ol>` : "";
-  const imgs = state.images.length ? `<h4 class="cl-h4">${esc(s.images)}</h4><div class="cl-tray static">${state.images.map((im) => `<figure class="cl-thumb"><img src="${isSafeImageDataUrl(im.dataUrl) ? im.dataUrl : ""}" alt="${esc(im.name)}" /></figure>`).join("")}</div>${v.imageNotes ? `<p class="cl-p">${esc(v.imageNotes)}</p>` : ""}<p class="nv-rev"><a href="https://lens.google.com/" target="_blank" rel="noopener noreferrer">Google Lens ↗</a> <a href="https://tineye.com/" target="_blank" rel="noopener noreferrer">TinEye ↗</a> <span class="muted">${esc(s.reverse)}</span></p>` : "";
-
-  return `<section class="cl-card nv-card nv-${v.verdict}" style="--nv:${col}" aria-labelledby="nv-h">
-    <h3 id="nv-h" class="cl-h">📰 ${esc(s.title)}</h3>
-    <div class="nv-banner" role="status">
-      ${nvIcon(v.verdict, col)}
-      <div class="nv-banner-text"><p class="nv-label" style="color:${col}">${esc(s[v.verdict])}</p><p class="nv-sub">${esc(sub)}</p>${v.headline ? `<p class="nv-headline">${esc(v.headline)}</p>` : ""}</div>
-      <div class="nv-conf">${nvRing(v.confidence, col)}<small>${esc(s.conf)}</small></div>
-    </div>
-    <p class="nv-basis"><span class="nv-chip basis">${esc(s.basis[v.basis] || "")}</span>${v.provider ? ` <span class="muted" dir="ltr">${esc(v.provider)} / ${esc(v.model || "")}</span>` : ""}</p>
-    ${note ? `<p class="cl-note-warn">${esc(note)}</p>` : ""}
-    ${v.explanation ? `<h4 class="cl-h4">${esc(s.explain)}</h4><p class="cl-p nv-expl">${esc(v.explanation)}</p>` : ""}
-    <h4 class="cl-h4">${esc(s.balance)}</h4>
-    <div class="nv-balance" role="img" aria-label="${esc(s.sup)} ${b.supports} / ${esc(s.ref)} ${b.refutes} / ${esc(s.ctx)} ${b.context}">${seg("sup", b.supports, "#22c55e")}${seg("ref", b.refutes, "#ef4444")}${seg("ctx", b.context, "#94a3b8")}</div>
-    <p class="nv-legend"><span><i style="background:#22c55e"></i>${esc(s.sup)} ${b.supports}</span><span><i style="background:#ef4444"></i>${esc(s.ref)} ${b.refutes}</span><span><i style="background:#94a3b8"></i>${esc(s.ctx)} ${b.context}</span></p>
-    ${claims}${evid}${cred}${tl}${imgs}
-    ${v.limits ? `<p class="cl-note"><strong>${esc(s.limits)}:</strong> ${esc(v.limits)}</p>` : ""}
-  </section>`;
 }
 
 /* ── Utils ─────────────────────────────────────────────────────────────── */
