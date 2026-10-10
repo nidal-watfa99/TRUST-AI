@@ -12,33 +12,44 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
-# The site is built from the extracted contents of TRUST-AI-v3.1.zip (kept in the repo root).
-# To release a new version: upload a new TRUST-AI-v3.1.zip (same name) and the workflow does the rest.
-
 jobs:
   verify:
     name: Tests & security audit
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Extract the zip
-        run: |
-          mkdir _app
-          unzip -q TRUST-AI-v3.1.zip -d _app
-          APP="$(dirname "$(find _app -name package.json -not -path '*/node_modules/*' | head -n 1)")"
-          echo "APP=$APP" >> "$GITHUB_ENV"
-          echo "App folder: $APP"
+      - name: Extract zip
+        run: unzip -q TRUST-AI-v3.1.zip -d _app
       - name: Run checks
+        working-directory: _app/TRUST-AI-v3.0
         run: npm run check
-        working-directory: ${{ env.APP }}
 
   deploy:
     name: Publish to GitHub Pages
     needs: verify
     runs-on: ubuntu-latest
     permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Extract zip
+        run: unzip -q TRUST-AI-v3.1.zip -d _app
+      - name: Assemble site
+        working-directory: _app/TRUST-AI-v3.0
+        run: |
+          mkdir ../../_site
+          cp -r index.html sw.js manifest.json css js assets .nojekyll .well-known ../../_site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
