@@ -1,69 +1,50 @@
-name: Unzip TRUST AI
+name: Deploy TRUST AI
 
-# ارفع ملف TRUST-AI-v3.1.zip إلى جذر المستودع، فيُفكّ تلقائياً ويُنشر.
 on:
   push:
     branches: [main]
-    paths: ["*.zip"]
   workflow_dispatch:
 
 permissions:
-  contents: write
-  actions: write
+  contents: read
 
 concurrency:
-  group: unzip
-  cancel-in-progress: false
+  group: pages
+  cancel-in-progress: true
 
 jobs:
-  unzip:
-    name: Unzip & commit
+  verify:
+    name: Tests & security audit
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm run check
 
-      - name: Find the zip
-        id: find
+  deploy:
+    name: Publish to GitHub Pages
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Assemble site
         run: |
-          ZIP=$(ls -t ./*.zip 2>/dev/null | head -n 1 || true)
-          if [ -z "$ZIP" ]; then
-            echo "No .zip file in the repository root — nothing to do."
-            echo "found=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "Using: $ZIP"
-            echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
-            echo "found=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Extract and copy into repo root
-        if: steps.find.outputs.found == 'true'
-        run: |
-          set -euo pipefail
-          rm -rf "$RUNNER_TEMP/x" && mkdir -p "$RUNNER_TEMP/x"
-          unzip -q "${{ steps.find.outputs.zip }}" -d "$RUNNER_TEMP/x"
-          SRC="$RUNNER_TEMP/x"
-          if [ "$(ls -A "$SRC" | wc -l)" -eq 1 ] && [ -d "$SRC/$(ls -A "$SRC")" ]; then
-            SRC="$SRC/$(ls -A "$SRC")"
-          fi
-          test -f "$SRC/index.html" || { echo "index.html not found inside the zip"; exit 1; }
-          rsync -a --exclude='.git/' --exclude='.github/' --exclude='node_modules/' "$SRC"/ ./
-          rm -f "${{ steps.find.outputs.zip }}"
-
-      - name: Commit and push
-        if: steps.find.outputs.found == 'true'
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "Unzip TRUST AI release"
-            git push
-          fi
-
-      - name: Trigger deploy
-        if: steps.find.outputs.found == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run deploy.yml --ref "${{ github.ref_name }}"
+          mkdir _site
+          cp -r index.html sw.js manifest.json css js assets .nojekyll .well-known _site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
