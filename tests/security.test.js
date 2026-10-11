@@ -1,5 +1,5 @@
 /**
- * TRUST AI — Security layer tests (v3.0)
+ * TRUST AI — Security layer tests (v3.1)
  * Run: node tests/security.test.js
  */
 import * as sec from "../js/security.js";

@@ -4,30 +4,86 @@
   "description": "منصة موثوقة لتحليل الرسائل والروابط ولقطات الشاشة ضد الاحتيال. تحقق قبل أن تثق.",
   "start_url": "./index.html",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "background_color": "#0a0f1a",
   "theme_color": "#0a0f1a",
   "lang": "ar",
   "dir": "rtl",
   "icons": [
     {
-      "src": "assets/icon-192.svg",
+      "src": "assets/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "assets/icon-512.svg",
+      "src": "assets/icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "assets/logo.svg",
+      "src": "assets/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     }
   ],
-  "categories": ["security", "utilities", "productivity"]
+  "categories": [
+    "security",
+    "utilities",
+    "productivity"
+  ],
+  "id": "./",
+  "scope": "./",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
+  "screenshots": [
+    {
+      "src": "assets/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "TRUST AI"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "فحص الأخبار",
+      "short_name": "الأخبار",
+      "url": "./index.html?open=news",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "فحص رقم هاتف",
+      "short_name": "الأرقام",
+      "url": "./index.html?open=phone",
+      "icons": [
+        {
+          "src": "assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
 }

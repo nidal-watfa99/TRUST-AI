@@ -1,6 +1,6 @@
-# 🛡 سياسة الأمان — TRUST AI v3.0 / Security Policy
+# 🛡 سياسة الأمان — TRUST AI v3.1 / Security Policy
 
-> **English summary:** TRUST AI is a static, zero-dependency web app. v3.0 adds a layered defence
+> **English summary:** TRUST AI is a static, zero-dependency web app. v3.1 continues the layered defence
 > (strict CSP, central `security.js`, clickjacking guard, hardened Service Worker, validated storage,
 > feed-poisoning protection, prompt-injection defences, CI audit). Real HTTP headers need Cloudflare /
 > Netlify (`_headers`, `headers-cloudflare.txt`). Report vulnerabilities privately by e-mail:
@@ -10,8 +10,9 @@
 
 | الإصدار | الدعم الأمني |
 |---------|--------------|
-| 3.0.x   | ✅ مدعوم |
-| ≤ 2.1   | ❌ حدّث إلى 3.0 |
+| 3.1.x   | ✅ مدعوم |
+| 3.0.x   | ✅ مدعوم (ترقية موصى بها) |
+| ≤ 2.1   | ❌ حدّث إلى 3.1 |
 
 ## الواقع التقني (بصراحة)
 
@@ -20,7 +21,7 @@
 1. **داخل التطبيق (فعّال دائماً):** CSP عبر `<meta>`، حارس الإطارات `js/guard.js`، وحدة `js/security.js`، Service Worker مقيّد.
 2. **ترويسات حقيقية (تتطلب Cloudflare أو Netlify):** `frame-ancestors`، `X-Frame-Options`، HSTS، COOP/CORP، Permissions-Policy — الملفات جاهزة: `_headers` و`headers-cloudflare.txt`.
 
-## طبقات الحماية في v3.0
+## طبقات الحماية في v3.1
 
 | # | الطبقة | ما الذي تمنعه |
 |---|--------|----------------|

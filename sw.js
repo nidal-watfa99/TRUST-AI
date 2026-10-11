@@ -1,4 +1,4 @@
-/* TRUST AI — offline cache (v3.0 hardened)
+/* TRUST AI — offline cache (v3.1 hardened)
  * - Caches ONLY an explicit allow-list of same-origin static files (no cache poisoning
  *   through arbitrary URLs, no cross-origin / API traffic ever touches the cache).
  * - Only stores successful, same-origin ("basic") GET responses.
@@ -71,18 +71,20 @@ self.addEventListener("fetch", (e) => {
   // Same-origin but not on the allow-list: do not touch.
   if (!ALLOWED.has(url.pathname) || req.headers.has("range")) return;
 
+  // Network-first: a fresh deploy is always shown right away; cache is only the offline fallback.
   e.respondWith(
-    caches.match(req).then((cached) => {
-      const net = fetch(req)
-        .then((res) => {
-          if (res && res.ok && res.type === "basic") {
-            const clone = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, clone));
-          }
-          return res;
-        })
-        .catch(() => cached || (req.mode === "navigate" ? caches.match("./index.html") : Response.error()));
-      return cached || net;
-    })
+    fetch(new Request(req, { cache: "no-cache" }))
+      .then((res) => {
+        if (res && res.ok && res.type === "basic") {
+          const clone = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, clone));
+        }
+        return res;
+      })
+      .catch(() =>
+        caches.match(req).then((cached) =>
+          cached || (req.mode === "navigate" ? caches.match("./index.html") : Response.error())
+        )
+      )
   );
 });

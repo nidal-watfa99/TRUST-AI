@@ -22,7 +22,7 @@
     font-src 'self' https://fonts.gstatic.com data:;
     img-src 'self' data: blob:;
     media-src 'self' blob:;
-    connect-src 'self' https://api.groq.com https://generativelanguage.googleapis.com https://openrouter.ai https://api.openai.com https://raw.githubusercontent.com https://gacs.app;
+    connect-src 'self' https://api.groq.com https://generativelanguage.googleapis.com https://factchecktools.googleapis.com https://openrouter.ai https://api.openai.com https://raw.githubusercontent.com https://gacs.app;
     worker-src 'self';
     manifest-src 'self';
     form-action 'none';
@@ -37,10 +37,22 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="TRUST AI" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="TRUST AI" />
+  <meta property="og:title" content="TRUST AI — تحقق قبل أن تثق" />
+  <meta property="og:description" content="افحص الرسائل والروابط والأخبار وأرقام الهاتف المشبوهة قبل أن تثق. Verify before you trust." />
+  <meta property="og:image" content="assets/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="TRUST AI — تحقق قبل أن تثق" />
+  <meta name="twitter:image" content="assets/og-image.png" />
   <title>TRUST AI — Verify before you trust</title>
   <link rel="manifest" href="manifest.json" />
-  <link rel="icon" type="image/svg+xml" href="assets/logo.svg" />
-  <link rel="apple-touch-icon" href="assets/icon-192.svg" />
+  <link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/icon-16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png" />
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -63,7 +75,7 @@
           <button type="button" id="btn-share" data-i18n-title="btnShare" class="icon-btn" data-i18n-aria="btnShare" aria-label="مشاركة" title="مشاركة التطبيق">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
           </button>
-          <button type="button" id="btn-install" data-i18n-title="btnInstall" class="icon-btn install-btn hidden" data-i18n-aria="btnInstall" aria-label="تثبيت التطبيق" title="تثبيت على سطح المكتب">
+          <button type="button" id="btn-install" data-i18n-title="btnInstall" class="icon-btn install-btn" data-i18n-aria="btnInstall" aria-label="تثبيت التطبيق" title="تثبيت على سطح المكتب">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>
           <button type="button" id="btn-client" data-i18n-title="btnClient" class="icon-btn client-btn" data-i18n-aria="btnClient" aria-label="العميل" title="العميل — مركز تحليل الحدث">
@@ -122,6 +134,11 @@
             <strong data-i18n="clientCta">افتح العميل الكامل</strong>
             <small data-i18n="clientCtaDesc">رابط أو صورة أو اسم أو خبر — تحليل شامل بالرسوم والتحذيرات</small>
           </span>
+        </button>
+
+        <button type="button" id="btn-install-cta" class="install-cta">
+          <span aria-hidden="true">⬇</span>
+          <span class="install-cta-text"><strong data-i18n="installCtaTitle">ثبّت التطبيق على سطح المكتب</strong><small data-i18n="installCtaDesc">يعمل كبرنامج مستقل وبدون إنترنت</small></span>
         </button>
 
         <div class="input-card">
@@ -278,6 +295,7 @@
         <div id="fraud-update-status" class="fraud-status hidden" role="status"></div>
         <div id="fraud-stats" class="fraud-stats"></div>
         <div id="fraud-results" class="fraud-results"></div>
+        <div id="fraud-numbers" class="fraud-results pn-numbers"></div>
         <div class="btn-row">
           <button type="button" class="btn btn-primary btn-back-home" data-i18n="btnBack">العودة</button>
         </div>
@@ -367,7 +385,7 @@
           <h3 data-i18n="aboutLayersTitle">الطبقات المزدوجة</h3>
           <ol class="about-list">
             <li><strong data-i18n="aboutLayer1Title">الطبقة 1 — محرك القواعد (بدون إنترنت):</strong> <span data-i18n="aboutLayer1">يحلل النص محلياً في المتصفح وفق أنماط معروفة: الاستعجال، انتحال الهوية، طلب أموال، معلومات حساسة، روابط مشبوهة، عروض غير واقعية، وهندسة اجتماعية. لا يحتاج اتصالاً ولا مفتاحاً.</span></li>
-            <li><strong data-i18n="aboutLayer2Title">الطبقة 2 — ذكاء اصطناعي (اختياري):</strong> <span data-i18n="aboutLayer2">عند تفعيل مفتاح API من مزوّدك (Groq أو Gemini أو OpenRouter أو OpenAI)، يُضاف تحليل لغوي أعمق وتحليل صور (رؤية) إن دعم النموذج ذلك. المفتاح يبقى في ذاكرة الجلسة فقط ولا يُرسل إلى أي خادم لـ TRUST AI.</span></li>
+            <li><strong data-i18n="aboutLayer2Title">الطبقة 2 — ذكاء اصطناعي (اختياري):</strong> <span data-i18n="aboutLayer2">عند تفعيل مفتاح API من مزوّدك (Groq أو Gemini أو OpenRouter أو OpenAI)، يُضاف تحليل لغوي أعمق وتحليل صور (رؤية) إن دعم النموذج ذلك. المفتاح يُحفظ على جهازك فقط حتى تلغي التفعيل يدويًا، ولا يُرسل إلى أي خادم لـ TRUST AI.</span></li>
           </ol>
         </article>
 
@@ -395,7 +413,7 @@
           <h3 data-i18n="aboutPrivacyTitle">الخصوصية والحدود</h3>
           <ul class="about-list">
             <li data-i18n="aboutPrivacy1">لا حسابات مستخدمين ولا تخزين دائم لمحتوى رسائلك أو صورك.</li>
-            <li data-i18n="aboutPrivacy2">مفاتيح API في الذاكرة فقط وتُمسح عند إغلاق الجلسة أو إلغاء التفعيل.</li>
+            <li data-i18n="aboutPrivacy2">مفاتيح API تُحفظ على جهازك فقط وتبقى إلى أن تلغي التفعيل يدويًا.</li>
             <li data-i18n="aboutPrivacy3">لا ترسل كلمات مرور أو OTP أو بيانات بنكية حقيقية إلى أي خدمة.</li>
             <li data-i18n="aboutPrivacy4">لا يضمن أي نظام أماناً بنسبة 100%. القرار النهائي دائماً لك.</li>
           </ul>
@@ -422,6 +440,24 @@
       <p data-i18n="footer">TRUST AI v1.0 — تحقق قبل أن تثق.</p>
       <a href="mailto:nidalwatfa99@gmail.com?subject=TRUST%20AI%20Feedback" class="footer-contact" data-i18n="footerContact">ملاحظات للمطوّر</a>
     </footer>
+  </div>
+
+  <!-- Install modal -->
+  <div id="install-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="install-title">
+    <div id="install-backdrop" class="modal-backdrop"></div>
+    <div class="modal-panel">
+      <div class="modal-header">
+        <h2 id="install-title" data-i18n="installTitle">تثبيت TRUST AI</h2>
+        <button type="button" id="install-close" class="icon-btn" data-i18n="close">إغلاق</button>
+      </div>
+      <img src="assets/icon-192.png" alt="" width="72" height="72" class="install-icon" />
+      <p class="modal-note" data-i18n="installIntro">اتبع الخطوات الخاصة بمتصفحك الحالي:</p>
+      <ol id="install-steps" class="install-steps"></ol>
+      <div class="btn-row">
+        <button type="button" id="btn-install-native" class="btn btn-primary hidden" data-i18n="installNow">تثبيت الآن</button>
+        <button type="button" id="btn-install-shortcut" class="btn btn-secondary hidden" data-i18n="installShortcut">تنزيل اختصار سطح المكتب (ويندوز)</button>
+      </div>
+    </div>
   </div>
 
   <!-- Examples modal -->
@@ -500,7 +536,7 @@
         <button type="button" id="btn-test-ai" class="btn btn-secondary" data-i18n="btnTestAI">اختبار الاتصال</button>
         <button type="button" id="btn-clear-ai" class="btn btn-ghost" data-i18n="btnClearAI">إلغاء التفعيل</button>
       </div>
-      <p class="mp-privacy" data-i18n="mpPrivacy">المفتاح يبقى في ذاكرة هذه الجلسة فقط، ولا يُرسل إلا إلى مزوّد النموذج الذي اخترته.</p>
+      <p class="mp-privacy" data-i18n="mpPrivacy">يُحفظ المفتاح على هذا الجهاز فقط (في متصفحك) إلى أن تلغي التفعيل يدويًا، ولا يُرسل إلا إلى مزوّد النموذج الذي اخترته.</p>
     </div>
   </div>
 

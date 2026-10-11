@@ -356,6 +356,13 @@ export function dossierToText(d, lang = "ar") {
     d.ai?.whatHappened || d.event.what,
     "",
   ];
+  if (d.newsVerdict) {
+    const nl = { true: lang === "ar" ? "خبر صادق" : "TRUE", false: lang === "ar" ? "خبر كاذب" : "FALSE", unproven: lang === "ar" ? "غير مثبت" : "UNPROVEN" };
+    lines.push(`${lang === "ar" ? "حكم الخبر" : "News verdict"}: ${nl[d.newsVerdict.verdict]} (${d.newsVerdict.confidence}%)`);
+    if (d.newsVerdict.explanation) lines.push(d.newsVerdict.explanation);
+    d.newsVerdict.evidence.filter((x) => x.url).slice(0, 6).forEach((x) => lines.push(`• ${x.publisher}: ${x.url}`));
+    lines.push("");
+  }
   if (d.warnings.length) {
     lines.push(ui.warnTitle + ":");
     d.warnings.filter((w) => w.level !== "info").forEach((w) => lines.push(`• [${ui.sev[w.level]}] ${w.text}`));

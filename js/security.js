@@ -1,5 +1,5 @@
 /**
- * TRUST AI — Security Layer (v3.0 "Shield")
+ * TRUST AI — Security Layer (v3.1 "Shield")
  * Centralized defensive utilities for a pure client-side app.
  *
  * Threats covered: XSS / HTML injection, SSRF-style URL abuse, header & key
@@ -10,7 +10,7 @@
  * person running it. True secrets must never live here.
  */
 
-export const APP_VERSION = "3.0.0";
+export const APP_VERSION = "3.1.0";
 export const BUILD_ID = "trust-ai-v3-" + APP_VERSION;
 
 /* ───────────────────────── Output encoding (XSS) ───────────────────────── */

@@ -62,8 +62,14 @@ const hits = allFiles.filter((f) => !f.startsWith("tests/") && secretRe.some((r)
 check(hits.length === 0, "no hard-coded API keys / private keys in repository", hits.join(", "));
 check(!existsSync(join(ROOT, ".env")), "no real .env committed");
 check(/^\.env$/m.test(read(".gitignore")), ".env is git-ignored");
-const keyStore = jsFiles.filter((f) => /(local|session)Storage\.setItem\([^)]*(apiKey|api_key|state\.apiKey)/i.test(read(f)));
-check(keyStore.length === 0, "API key is never written to web storage", keyStore.join(", "));
+// Design (v3.0.1): the key is saved on THIS device so it survives leaving the app, until the person
+// disconnects. It must live in exactly one dedicated entry, written only by ai-provider.js.
+const aiSrc = read("js/ai-provider.js");
+const keyStore = jsFiles.filter((f) => f !== "js/ai-provider.js" && /(local|session)Storage\.setItem\([^)]*(apiKey|api_key|state\.apiKey)/i.test(read(f)));
+check(keyStore.length === 0, "API key is never written to web storage outside js/ai-provider.js", keyStore.join(", "));
+check(!/sessionStorage\.setItem\([^)]*(apiKey|api_key|state\.apiKey)/i.test(aiSrc), "API key is never written to sessionStorage");
+check(/localStorage\.removeItem\(SAVED_KEY\)/.test(aiSrc), "disconnecting removes the saved API key");
+check(/if \(res\.ok\) \{\s*saveAIConfig\(\)/.test(read("js/app.js")) && /if \(res\.ok\) saveAIConfig\(\)/.test(read("js/app.js")), "key is saved only after a successful connection test");
 check(!/[?&]key=\$\{/.test(read("js/ai-provider.js")), "API key is never placed in a URL");
 
 console.log("\n4. Links & transport");
