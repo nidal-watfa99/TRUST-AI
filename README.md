@@ -277,7 +277,7 @@ TRUST-AI/
 - 14 طبقة حماية (انظر الجدول أعلاه) + وحدة `security.js` v3 + `guard.js` + `shield-ui.js`
 - CSP أشد: `script-src-attr 'none'` و`form-action 'none'`؛ إزالة وسوم `<meta>` غير الفعّالة
 - مفتاح Gemini انتقل من الرابط إلى ترويسة `x-goog-api-key`
-- Service Worker بقائمة بيضاء، والكاش `trust-ai-v3.1.0`
+- Service Worker بقائمة بيضاء، والكاش `trust-ai-v3.1.1`
 - تحقق صارم من تخزين السجل والعدّاد والبلاغات وقاعدة الاحتيال
 - ملفات جديدة: `_headers`، `LICENSE`، `.well-known/security.txt`، `CODEOWNERS`، `dependabot.yml`، `security.yml`، `audit.mjs`، `security.test.js`
 - `deploy.yml` يشغّل الاختبارات أولاً وينشر الملفات التشغيلية فقط

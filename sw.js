@@ -3,7 +3,7 @@
  *   through arbitrary URLs, no cross-origin / API traffic ever touches the cache).
  * - Only stores successful, same-origin ("basic") GET responses.
  * - Old caches are deleted on activation. */
-const CACHE = "trust-ai-v3.1.0";
+const CACHE = "trust-ai-v3.1.1";
 const ASSETS = [
   "./",
   "./index.html",

@@ -207,33 +207,176 @@ export function initAIProvider(config = {}) {
     } catch (_) {}
     return true;
   }
-  clearAIProvider();
+  // An invalid/unusable key only resets the in-memory connection. It must NEVER erase the key the
+  // person already saved — only the explicit "disconnect" button (clearAIProvider) does that.
+  resetAIState();
   return false;
 }
 
 const SAVED_KEY = "trustai_ai_cfg";
+const IDB_NAME = "trustai_keystore";
+const IDB_STORE = "kv";
+const IDB_REC = "ai_cfg";
 
-/** Persist the CURRENT, already-verified connection so it survives leaving/reopening the app.
- *  Call only after a successful connection test. Removed again by clearAIProvider(). */
-export function saveAIConfig() {
-  if (!state.enabled || !state.apiKey) return false;
+/* ── Durable storage: the key is mirrored in TWO places on this device (localStorage + IndexedDB) and the
+ *    browser is asked to mark the origin as "persistent" so it is not evicted under storage pressure
+ *    (iOS Safari / Android WebView / in-app browsers love to wipe localStorage alone).
+ *    It is removed ONLY by clearAIProvider() — the person's explicit disconnect. ── */
+
+function idbOpen() {
+  return new Promise((resolve) => {
+    try {
+      if (typeof indexedDB === "undefined" || !indexedDB) return resolve(null);
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => { try { req.result.createObjectStore(IDB_STORE); } catch (_) {} };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+      req.onblocked = () => resolve(null);
+    } catch (_) { resolve(null); }
+  });
+}
+
+async function idbRun(mode, fn) {
+  const db = await idbOpen();
+  if (!db) return null;
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(IDB_STORE, mode);
+      const out = fn(tx.objectStore(IDB_STORE));
+      tx.oncomplete = () => { try { db.close(); } catch (_) {} resolve(out && "result" in out ? out.result : true); };
+      tx.onerror = tx.onabort = () => { try { db.close(); } catch (_) {} resolve(null); };
+    } catch (_) { try { db.close(); } catch (__) {} resolve(null); }
+  });
+}
+
+const idbPut = (value) => idbRun("readwrite", (st) => st.put(value, IDB_REC)).then((r) => r !== null);
+const idbGet = () => idbRun("readonly", (st) => st.get(IDB_REC));
+const idbDelete = () => idbRun("readwrite", (st) => st.delete(IDB_REC));
+
+/** Ask the browser not to evict this origin's storage. Best-effort, silent. */
+export async function requestPersistentStorage() {
+  try {
+    if (navigator.storage && navigator.storage.persist) {
+      if (await navigator.storage.persisted()) return true;
+      return await navigator.storage.persist();
+    }
+  } catch (_) {}
+  return false;
+}
+
+const validSaved = (v) => v && v.v === 1 && typeof v.apiKey === "string" && typeof v.modelId === "string" && validateApiKey(v.apiKey).ok;
+
+function currentRecord() {
+  if (!state.enabled || !state.apiKey) return null;
   const meta = FREE_MODELS.find((m) => m.id === state.modelId);
   const customModel = meta && state.model !== meta.model ? state.model : "";
-  return storageSetJSON(SAVED_KEY, { v: 1, apiKey: state.apiKey, modelId: state.modelId, customModel }, { maxBytes: 2000 });
+  return { v: 1, apiKey: state.apiKey, modelId: state.modelId, customModel, savedAt: Date.now() };
 }
 
-/** Re-activate the saved connection on startup. Invalid/tampered data is discarded. */
+function lsWrite(rec) {
+  return storageSetJSON(SAVED_KEY, rec, { maxBytes: 2000 });
+}
+
+function lsRead() {
+  return storageGetJSON(SAVED_KEY, { fallback: null, maxBytes: 2000, validate: validSaved });
+}
+
+/** Persist the CURRENT connection (sync, localStorage + background IndexedDB mirror).
+ *  Prefer saveAIConfigAsync() when you need confirmation that the key really was stored. */
+export function saveAIConfig() {
+  const rec = currentRecord();
+  if (!rec) return false;
+  const ok = lsWrite(rec);
+  idbPut(rec);
+  requestPersistentStorage();
+  return ok;
+}
+
+/** Save to every layer and READ IT BACK to prove the key is really stored.
+ *  Resolves { ok, layers: ["localStorage","indexedDB"] } — ok is true if at least one layer verified. */
+export async function saveAIConfigAsync() {
+  const rec = currentRecord();
+  if (!rec) return { ok: false, layers: [] };
+  const layers = [];
+  if (lsWrite(rec)) {
+    const back = lsRead();
+    if (back && back.apiKey === rec.apiKey && back.modelId === rec.modelId) layers.push("localStorage");
+  }
+  if (await idbPut(rec)) {
+    const back = await idbGet();
+    if (back && back.apiKey === rec.apiKey) layers.push("indexedDB");
+  }
+  await requestPersistentStorage();
+  return { ok: layers.length > 0, layers };
+}
+
+/** Is a saved connection present in ANY layer? (async) */
+export async function hasSavedAIConfig() {
+  if (lsRead()) return true;
+  const rec = await idbGet();
+  return validSaved(rec);
+}
+
+/** Re-activate the saved connection on startup (sync, localStorage). Corrupted data is discarded. */
 export function restoreAIProvider() {
-  const saved = storageGetJSON(SAVED_KEY, {
-    fallback: null,
-    maxBytes: 2000,
-    validate: (v) => v && v.v === 1 && typeof v.apiKey === "string" && typeof v.modelId === "string",
-  });
-  if (!saved) return false;
-  return initAIProvider({ apiKey: saved.apiKey, modelId: saved.modelId, customModel: saved.customModel || "" });
+  const raw = (() => { try { return localStorage.getItem(SAVED_KEY); } catch (_) { return null; } })();
+  if (raw == null) return false;
+  const saved = lsRead();
+  if (!saved) {
+    // Present but unusable (tampered / invalid key characters): drop it so it cannot linger.
+    try { localStorage.removeItem(SAVED_KEY); } catch (_) {}
+    return false;
+  }
+  const ok = initAIProvider({ apiKey: saved.apiKey, modelId: saved.modelId, customModel: saved.customModel || "" });
+  if (ok) idbPut(saved); // keep the second layer in sync
+  return ok;
 }
 
-export function clearAIProvider() {
+/** Startup fallback: if localStorage was wiped by the browser, recover from the IndexedDB mirror
+ *  and write the key back to localStorage. */
+export async function restoreAIProviderAsync() {
+  if (isAIAvailable()) return true;
+  if (restoreAIProvider()) return true;
+  const rec = await idbGet();
+  if (!validSaved(rec)) return false;
+  const ok = initAIProvider({ apiKey: rec.apiKey, modelId: rec.modelId, customModel: rec.customModel || "" });
+  if (ok) lsWrite(rec);
+  return ok;
+}
+
+/** Called when the app returns to the foreground / is restored from the back-forward cache.
+ *  Re-heals a connection that was lost from memory or whose storage entry was evicted.
+ *  Resolves true when the in-memory connection changed. */
+export async function syncAIConfig() {
+  if (isAIAvailable()) {
+    // Heal: connection is live but storage lost it (browser eviction) -> write it back everywhere.
+    const rec = currentRecord();
+    if (rec) {
+      if (!lsRead()) lsWrite(rec);
+      idbGet().then((r) => { if (!validSaved(r)) idbPut(rec); });
+    }
+    return false;
+  }
+  return restoreAIProviderAsync();
+}
+
+/** Another tab changed the saved connection (storage event): follow it. */
+export function followSavedAIConfig() {
+  const saved = lsRead();
+  if (saved) {
+    if (state.apiKey === saved.apiKey && state.modelId === saved.modelId) return false;
+    return initAIProvider({ apiKey: saved.apiKey, modelId: saved.modelId, customModel: saved.customModel || "" });
+  }
+  if (state.enabled) { resetAIState(); return true; }
+  return false;
+}
+
+/** Undo an unsaved/failed attempt: go back to the previously SAVED connection (or none). */
+export function revertToSavedAI() {
+  if (!restoreAIProvider()) resetAIState();
+}
+
+function resetAIState() {
   state.apiKey = null;
   state.modelId = null;
   state.provider = null;
@@ -243,9 +386,15 @@ export function clearAIProvider() {
   try {
     sessionStorage.removeItem("trustai_ai");
   } catch (_) {}
+}
+
+/** Explicit manual disconnect — the ONLY thing that deletes the saved key. */
+export function clearAIProvider() {
+  resetAIState();
   try {
     localStorage.removeItem(SAVED_KEY);
   } catch (_) {}
+  idbDelete();
 }
 
 export function isAIAvailable() {
@@ -530,7 +679,11 @@ export async function testConnection() {
     // the key and the model. Reasoning models may answer with non-JSON/empty text — that is not a failed key.
     return { ok: true, raw: String(raw || "").slice(0, 100), json: !!parseAIJson(raw || "") };
   } catch (err) {
-    return { ok: false, error: err.message };
+    const m = /\[[a-z]+ (\d{3})\]/i.exec(String(err && err.message));
+    const status = m ? Number(m[1]) : 0;
+    // 401/403 = the provider itself refused this key. Anything else (network, timeout, 429, 5xx,
+    // region block) says nothing about the key, so the key must not be thrown away because of it.
+    return { ok: false, error: err.message, status, rejected: status === 401 || status === 403 };
   }
 }
 

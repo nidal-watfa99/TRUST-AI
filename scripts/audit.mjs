@@ -69,7 +69,8 @@ const keyStore = jsFiles.filter((f) => f !== "js/ai-provider.js" && /(local|sess
 check(keyStore.length === 0, "API key is never written to web storage outside js/ai-provider.js", keyStore.join(", "));
 check(!/sessionStorage\.setItem\([^)]*(apiKey|api_key|state\.apiKey)/i.test(aiSrc), "API key is never written to sessionStorage");
 check(/localStorage\.removeItem\(SAVED_KEY\)/.test(aiSrc), "disconnecting removes the saved API key");
-check(/if \(res\.ok\) \{\s*saveAIConfig\(\)/.test(read("js/app.js")) && /if \(res\.ok\) saveAIConfig\(\)/.test(read("js/app.js")), "key is saved only after a successful connection test");
+check(/saveAIConfigAsync\(\)/.test(read("js/app.js")) && /res\.rejected/.test(read("js/app.js")), "key is saved after a verified (or inconclusive) test and never when the provider rejects it");
+check(!/function initAIProvider[\s\S]*?clearAIProvider\(\)[\s\S]*?\n}\n/.test(aiSrc.slice(aiSrc.indexOf("export function initAIProvider"), aiSrc.indexOf("const SAVED_KEY"))), "an invalid key can never erase the saved key (only the disconnect button does)");
 check(!/[?&]key=\$\{/.test(read("js/ai-provider.js")), "API key is never placed in a URL");
 
 console.log("\n4. Links & transport");

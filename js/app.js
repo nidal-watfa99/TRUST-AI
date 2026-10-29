@@ -9,7 +9,13 @@ import {
   initAIProvider,
   clearAIProvider,
   saveAIConfig,
+  saveAIConfigAsync,
   restoreAIProvider,
+  restoreAIProviderAsync,
+  syncAIConfig,
+  followSavedAIConfig,
+  revertToSavedAI,
+  requestPersistentStorage,
   isAIAvailable,
   isVisionAvailable,
   getAIStatus,
@@ -68,6 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   initElderly();
   restoreAIProvider();
+  bindAIPersistence();
   bindEvents();
   bindImageFallbacks();
   bindSensitiveWatch();
@@ -726,6 +733,20 @@ function syncModelSelectToStatus() {
   return true;
 }
 
+/** Keep the saved AI key alive across leaving the app, internal navigation, bfcache restores,
+ *  browser storage eviction and other tabs. The key is deleted ONLY by the disconnect button. */
+function bindAIPersistence() {
+  const refresh = () => { syncModelSelectToStatus(); updateAIStatusUI(); };
+  // localStorage empty (browser wiped it)? recover from the IndexedDB mirror.
+  if (!isAIAvailable()) restoreAIProviderAsync().then((ok) => { if (ok) refresh(); }).catch(() => {});
+  requestPersistentStorage();
+  const resync = () => { syncAIConfig().then((changed) => { if (changed) refresh(); }).catch(() => {}); };
+  window.addEventListener("pageshow", resync);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") resync(); });
+  window.addEventListener("focus", resync);
+  window.addEventListener("storage", (e) => { if (e.key === "trustai_ai_cfg" && followSavedAIConfig()) refresh(); });
+}
+
 async function onSaveAI() {
   const key = ($("#ai-key")?.value || "").trim();
   const modelId = $("#ai-model")?.value;
@@ -738,17 +759,31 @@ async function onSaveAI() {
   const switched = syncModelSelectToStatus();
   showAIResult(true, (switched ? (getLang() === "ar" ? "تم اختيار مزوّد المفتاح تلقائيًا. " : "Provider chosen from your key. ") : "") + (getLang() === "ar" ? "جارٍ اختبار الاتصال…" : "Testing connection…"));
   const res = await testConnection();
-  updateAIStatusUI();
-  if (res.ok) {
-    saveAIConfig();
-    if ($("#ai-key")) $("#ai-key").value = "";
-    showAIResult(true, t("connectionOk"));
-    showToast(t("aiConnected"));
-    setTimeout(closeSettings, 700);
-  } else {
-    clearAIProvider();
+  const ar = getLang() === "ar";
+  if (!res.ok && res.rejected) {
+    // The provider itself refused this key: do not keep it, and do NOT touch the key saved before.
+    revertToSavedAI();
+    syncModelSelectToStatus();
     updateAIStatusUI();
     showAIResult(false, `${t("connectionFail")}: ${res.error || ""}`);
+    return;
+  }
+  // Verified — or the check was inconclusive (network/limit/region): the key itself is fine, so keep it.
+  const saved = await saveAIConfigAsync();
+  updateAIStatusUI();
+  if ($("#ai-key")) $("#ai-key").value = "";
+  if (res.ok && saved.ok) {
+    showAIResult(true, `${t("connectionOk")} — ${ar ? "تم حفظ المفتاح على هذا الجهاز وسيبقى حتى تحذفه يدويًا." : "Key saved on this device; it stays until you remove it."}`);
+    showToast(t("aiConnected"));
+    setTimeout(closeSettings, 1200);
+  } else if (res.ok) {
+    showAIResult(false, ar
+      ? "الاتصال ناجح لكن المتصفح منع حفظ المفتاح (وضع التصفح الخاص أو حظر التخزين). سيعمل حتى إغلاق التطبيق فقط."
+      : "Connection works, but the browser blocked saving the key (private mode or storage blocked). It will work until you close the app.");
+  } else {
+    showAIResult(false, `${t("connectionFail")}: ${res.error || ""}\n` + (saved.ok
+      ? (ar ? "تم حفظ المفتاح ولم يُحذف — أعد الاختبار لاحقًا (المشكلة من الشبكة/المزوّد وليست من المفتاح)." : "The key was saved and kept — test again later (network/provider issue, not the key).")
+      : (ar ? "تعذّر حفظ المفتاح لأن المتصفح يمنع التخزين." : "Could not save the key because the browser blocks storage.")));
   }
 }
 
@@ -765,13 +800,15 @@ async function onTestAI() {
   const key = ($("#ai-key")?.value || "").trim();
   const modelId = $("#ai-model")?.value;
   const customModel = ($("#ai-custom-model")?.value || "").trim();
-  if (validateApiKey(key).ok) { initAIProvider({ apiKey: key, modelId, customModel }); syncModelSelectToStatus(); }
+  const typed = validateApiKey(key).ok;
+  if (typed) { initAIProvider({ apiKey: key, modelId, customModel }); syncModelSelectToStatus(); }
   const btn = $("#btn-test-ai");
   if (btn) btn.disabled = true;
   showAIResult(true, getLang() === "ar" ? "جارٍ اختبار الاتصال…" : "Testing connection…");
   const res = await testConnection();
   if (btn) btn.disabled = false;
-  if (res.ok) saveAIConfig();
+  if (res.ok) await saveAIConfigAsync();
+  else if (typed && res.rejected) { revertToSavedAI(); syncModelSelectToStatus(); }
   showAIResult(res.ok, res.ok ? t("connectionOk") : `${t("connectionFail")}: ${res.error || ""}`);
   updateAIStatusUI();
 }

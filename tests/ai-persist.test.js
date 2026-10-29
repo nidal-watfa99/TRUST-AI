@@ -42,5 +42,25 @@ store.set("trustai_ai_cfg", JSON.stringify({ v: 1, apiKey: "bad key\nx", modelId
 let e = await load(5);
 assert(e.restoreAIProvider() === false && !store.has("trustai_ai_cfg"), "invalid saved key is refused and removed");
 
+// ── Regression: the saved key must survive failures, bad input and "internal navigation" ──
+store.clear();
+let f = await load(10);
+f.initAIProvider({ apiKey: KEY, modelId: m.id });
+await f.saveAIConfigAsync();
+assert(store.has("trustai_ai_cfg"), "saveAIConfigAsync stores and read-back verifies the key");
+assert((await f.saveAIConfigAsync()).ok === true, "save is confirmed (ok:true)");
+assert(f.initAIProvider({ apiKey: "bad key", modelId: m.id }) === false, "invalid key refused in memory");
+assert(store.has("trustai_ai_cfg"), "an invalid key does NOT erase the saved key");
+f.initAIProvider({ apiKey: "AIzaSyAnotherKey_ABCDEFGHIJ12345678", modelId: m.id }); // a new, not-yet-verified key
+f.revertToSavedAI(); // provider rejected it (401)
+assert(f.isAIAvailable() && store.has("trustai_ai_cfg"), "after a rejected new key the previous saved key is back");
+assert(JSON.parse(store.get("trustai_ai_cfg")).apiKey === KEY, "saved key is still the original one");
+store.delete("trustai_ai_cfg"); // browser evicted localStorage while the app is open
+assert((await f.syncAIConfig()) === false && store.has("trustai_ai_cfg"), "evicted storage is healed on return to the app");
+let g = await load(11);
+assert((await g.restoreAIProviderAsync()) === true && g.isAIAvailable(), "key comes back after a new page load");
+g.clearAIProvider();
+assert(!store.has("trustai_ai_cfg") && !g.isAIAvailable(), "only the manual disconnect removes it");
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed) process.exit(1);
