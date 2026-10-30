@@ -153,8 +153,11 @@ function friendlyError(status, body, provider) {
     402: ["رصيد الحساب غير كافٍ لهذا النموذج. اختر نموذجًا مجانيًا.", "Not enough credit for this model. Pick a free model."],
     403: ["المفتاح لا يملك صلاحية لهذا النموذج أو المنطقة غير مدعومة.", "The key has no access to this model, or your region is not supported."],
     404: ["النموذج غير موجود أو أُوقف. اختر نموذجًا آخر من القائمة.", "Model not found or retired. Pick another model."],
+    500: ["خطأ مؤقت عند المزوّد. المفتاح سليم — أعد المحاولة بعد قليل.", "Temporary provider error. Your key is fine — try again shortly."],
+    503: ["المزوّد مزدحم حاليًا (ضغط مؤقت على خوادم النموذج). المفتاح سليم ومتصل — أعد المحاولة بعد لحظات أو بدّل النموذج.", "The provider is overloaded right now (temporary). Your key is fine and connected — retry in a moment or switch model."],
     429: ["تجاوزت حد الاستخدام المجاني. انتظر قليلاً أو بدّل النموذج.", "Free-tier rate limit reached. Wait a moment or switch model."],
   }[status] || ["خطأ من المزوّد.", "Provider error."];
+  if (status >= 500) msg = "";
   return `[${provider} ${status}] ${L(hints[0], hints[1])} ${msg}`.trim();
 }
 
@@ -264,13 +267,51 @@ export async function requestPersistentStorage() {
   return false;
 }
 
-const validSaved = (v) => v && v.v === 1 && typeof v.apiKey === "string" && typeof v.modelId === "string" && validateApiKey(v.apiKey).ok;
+const validPlain = (v) => v && v.v === 1 && typeof v.apiKey === "string" && typeof v.modelId === "string" && validateApiKey(v.apiKey).ok;
+const validSealed = (v) => v && v.v === 2 && ["salt", "iv", "ct", "modelId"].every((k) => typeof v[k] === "string" && v[k].length > 0 && v[k].length < 1500);
+const validSaved = (v) => validPlain(v) || validSealed(v);
 
 function currentRecord() {
   if (!state.enabled || !state.apiKey) return null;
   const meta = FREE_MODELS.find((m) => m.id === state.modelId);
   const customModel = meta && state.model !== meta.model ? state.model : "";
   return { v: 1, apiKey: state.apiKey, modelId: state.modelId, customModel, savedAt: Date.now() };
+}
+
+/* ── Optional passphrase protection (WebCrypto: PBKDF2-SHA256 → AES-256-GCM).
+ *    The passphrase and the derived key live in memory only; what is stored is ciphertext. ── */
+const PBKDF2_ITER = 250000;
+let vault = null; // { key: CryptoKey, salt: Uint8Array }
+let failedUnlocks = 0;
+let unlockBlockedUntil = 0;
+const subtle = () => (globalThis.crypto && globalThis.crypto.subtle) || null;
+const b64 = (u8) => { let t = ""; for (const x of u8) t += String.fromCharCode(x); return btoa(t); };
+const unb64 = (t) => Uint8Array.from(atob(t), (c) => c.charCodeAt(0));
+
+async function deriveVaultKey(pass, salt) {
+  const sc = subtle();
+  if (!sc) throw new Error("WebCrypto unavailable");
+  const base = await sc.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return sc.deriveKey({ name: "PBKDF2", salt, iterations: PBKDF2_ITER, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+}
+
+async function sealRecord(rec) {
+  const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
+  const ct = await subtle().encrypt({ name: "AES-GCM", iv }, vault.key, new TextEncoder().encode(JSON.stringify({ apiKey: rec.apiKey })));
+  return { v: 2, salt: b64(vault.salt), iv: b64(iv), ct: b64(new Uint8Array(ct)), modelId: rec.modelId, customModel: rec.customModel || "", savedAt: Date.now() };
+}
+
+async function openSealed(rec, key) {
+  const pt = await subtle().decrypt({ name: "AES-GCM", iv: unb64(rec.iv) }, key, unb64(rec.ct));
+  const { apiKey } = JSON.parse(new TextDecoder().decode(pt));
+  return apiKey;
+}
+
+/** The record to store right now: ciphertext when protection is on, plain otherwise. */
+async function buildRecord() {
+  const rec = currentRecord();
+  if (!rec) return null;
+  return vault ? sealRecord(rec) : rec;
 }
 
 function lsWrite(rec) {
@@ -281,11 +322,23 @@ function lsRead() {
   return storageGetJSON(SAVED_KEY, { fallback: null, maxBytes: 2000, validate: validSaved });
 }
 
+async function savedAnywhere() {
+  const ls = lsRead();
+  if (ls) return ls;
+  const rec = await idbGet();
+  return validSaved(rec) ? rec : null;
+}
+
+const sameRecord = (back, rec) => !!back && (rec.v === 2 ? back.v === 2 && back.ct === rec.ct : back.v === 1 && back.apiKey === rec.apiKey && back.modelId === rec.modelId);
+
 /** Persist the CURRENT connection (sync, localStorage + background IndexedDB mirror).
  *  Prefer saveAIConfigAsync() when you need confirmation that the key really was stored. */
 export function saveAIConfig() {
+  if (vault) { saveAIConfigAsync(); return true; }
   const rec = currentRecord();
   if (!rec) return false;
+  const existing = lsRead();
+  if (existing && existing.v === 2) return false; // sealed record present, locked: never downgrade silently
   const ok = lsWrite(rec);
   idbPut(rec);
   requestPersistentStorage();
@@ -293,31 +346,87 @@ export function saveAIConfig() {
 }
 
 /** Save to every layer and READ IT BACK to prove the key is really stored.
- *  Resolves { ok, layers: ["localStorage","indexedDB"] } — ok is true if at least one layer verified. */
-export async function saveAIConfigAsync() {
-  const rec = currentRecord();
-  if (!rec) return { ok: false, layers: [] };
+ *  Resolves { ok, layers, locked? } — ok is true if at least one layer verified. */
+export function saveAIConfigAsync() { return saveInternal(false); }
+
+async function saveInternal(allowDowngrade) {
+  if (!currentRecord()) return { ok: false, layers: [] };
+  const existing = lsRead();
+  if (!allowDowngrade && existing && existing.v === 2 && !vault) return { ok: false, layers: [], locked: true }; // never replace a sealed key with a plain one by accident
+  const rec = await buildRecord();
   const layers = [];
-  if (lsWrite(rec)) {
-    const back = lsRead();
-    if (back && back.apiKey === rec.apiKey && back.modelId === rec.modelId) layers.push("localStorage");
-  }
-  if (await idbPut(rec)) {
-    const back = await idbGet();
-    if (back && back.apiKey === rec.apiKey) layers.push("indexedDB");
-  }
+  if (lsWrite(rec) && sameRecord(lsRead(), rec)) layers.push("localStorage");
+  if (await idbPut(rec) && sameRecord(await idbGet(), rec)) layers.push("indexedDB");
   await requestPersistentStorage();
   return { ok: layers.length > 0, layers };
 }
 
 /** Is a saved connection present in ANY layer? (async) */
 export async function hasSavedAIConfig() {
-  if (lsRead()) return true;
-  const rec = await idbGet();
-  return validSaved(rec);
+  return !!(await savedAnywhere());
 }
 
-/** Re-activate the saved connection on startup (sync, localStorage). Corrupted data is discarded. */
+/** "none" | "unsaved" | "plain" | "locked" | "unlocked" */
+export async function getKeyProtectionState() {
+  const rec = await savedAnywhere();
+  if (!rec) return state.enabled ? "unsaved" : "none";
+  if (rec.v === 2) return state.enabled && vault ? "unlocked" : "locked";
+  return "plain";
+}
+
+/** Turn on passphrase protection for the CURRENT key (min 8 chars). Re-saves as ciphertext everywhere. */
+export async function enableKeyProtection(pass) {
+  if (!state.enabled) return { ok: false, reason: "no-key" };
+  if (typeof pass !== "string" || pass.length < 8) return { ok: false, reason: "short" };
+  if (!subtle()) return { ok: false, reason: "nocrypto" };
+  const prev = vault;
+  try {
+    const salt = globalThis.crypto.getRandomValues(new Uint8Array(16));
+    vault = { key: await deriveVaultKey(pass, salt), salt };
+    const r = await saveAIConfigAsync();
+    if (!r.ok) { vault = prev; return { ok: false, reason: "save" }; }
+    // Never leave an old plaintext copy behind in a layer that failed to take the new record.
+    if (!r.layers.includes("localStorage")) { try { localStorage.removeItem(SAVED_KEY); } catch (_) {} }
+    if (!r.layers.includes("indexedDB")) await idbDelete();
+    return { ok: true, layers: r.layers };
+  } catch (_) { vault = prev; return { ok: false, reason: "error" }; }
+}
+
+/** Remove the passphrase (key must be unlocked). Re-saves as plain. */
+export async function disableKeyProtection() {
+  if (!state.enabled || !vault) return { ok: false, reason: "locked" };
+  const prev = vault;
+  vault = null;
+  const r = await saveInternal(true); // deliberate: the person turned protection off
+  if (!r.ok) { vault = prev; return { ok: false, reason: "save" }; }
+  return { ok: true };
+}
+
+/** Unlock a passphrase-protected key. Wrong guesses back off exponentially after the 3rd. */
+export async function unlockAIConfig(pass) {
+  const wait = unlockBlockedUntil - Date.now();
+  if (wait > 0) return { ok: false, reason: "wait", waitMs: wait };
+  const rec = await savedAnywhere();
+  if (!rec || rec.v !== 2) return { ok: false, reason: "nothing" };
+  try {
+    const salt = unb64(rec.salt);
+    const key = await deriveVaultKey(String(pass || ""), salt);
+    const apiKey = await openSealed(rec, key);
+    if (!initAIProvider({ apiKey, modelId: rec.modelId, customModel: rec.customModel || "" })) return { ok: false, reason: "corrupt" };
+    vault = { key, salt };
+    failedUnlocks = 0;
+    if (!lsRead()) lsWrite(rec);
+    idbPut(rec);
+    return { ok: true };
+  } catch (_) {
+    failedUnlocks++;
+    if (failedUnlocks >= 3) unlockBlockedUntil = Date.now() + Math.min(60000, 2000 * 2 ** (failedUnlocks - 3));
+    return { ok: false, reason: "wrong" };
+  }
+}
+
+/** Re-activate the saved connection on startup (sync, localStorage). A passphrase-protected key
+ *  stays locked here (returns false) until unlockAIConfig(). Corrupted data is discarded. */
 export function restoreAIProvider() {
   const raw = (() => { try { return localStorage.getItem(SAVED_KEY); } catch (_) { return null; } })();
   if (raw == null) return false;
@@ -327,18 +436,20 @@ export function restoreAIProvider() {
     try { localStorage.removeItem(SAVED_KEY); } catch (_) {}
     return false;
   }
+  if (saved.v === 2) return false;
   const ok = initAIProvider({ apiKey: saved.apiKey, modelId: saved.modelId, customModel: saved.customModel || "" });
   if (ok) idbPut(saved); // keep the second layer in sync
   return ok;
 }
 
 /** Startup fallback: if localStorage was wiped by the browser, recover from the IndexedDB mirror
- *  and write the key back to localStorage. */
+ *  and write the key back to localStorage. localStorage stays authoritative when it has a record. */
 export async function restoreAIProviderAsync() {
   if (isAIAvailable()) return true;
   if (restoreAIProvider()) return true;
+  if (lsRead()) return false; // present but locked: the older IndexedDB copy must never bypass the lock
   const rec = await idbGet();
-  if (!validSaved(rec)) return false;
+  if (!validSaved(rec) || rec.v === 2) return false;
   const ok = initAIProvider({ apiKey: rec.apiKey, modelId: rec.modelId, customModel: rec.customModel || "" });
   if (ok) lsWrite(rec);
   return ok;
@@ -350,10 +461,11 @@ export async function restoreAIProviderAsync() {
 export async function syncAIConfig() {
   if (isAIAvailable()) {
     // Heal: connection is live but storage lost it (browser eviction) -> write it back everywhere.
-    const rec = currentRecord();
-    if (rec) {
-      if (!lsRead()) lsWrite(rec);
-      idbGet().then((r) => { if (!validSaved(r)) idbPut(rec); });
+    if (!lsRead()) {
+      const rec = await buildRecord();
+      if (rec) { lsWrite(rec); idbPut(rec); }
+    } else {
+      idbGet().then(async (r) => { if (!validSaved(r)) { const rec = await buildRecord(); if (rec) idbPut(rec); } });
     }
     return false;
   }
@@ -364,6 +476,7 @@ export async function syncAIConfig() {
 export function followSavedAIConfig() {
   const saved = lsRead();
   if (saved) {
+    if (saved.v === 2) return false; // sealed in another tab: this tab keeps what it has
     if (state.apiKey === saved.apiKey && state.modelId === saved.modelId) return false;
     return initAIProvider({ apiKey: saved.apiKey, modelId: saved.modelId, customModel: saved.customModel || "" });
   }
@@ -372,8 +485,16 @@ export function followSavedAIConfig() {
 }
 
 /** Undo an unsaved/failed attempt: go back to the previously SAVED connection (or none). */
-export function revertToSavedAI() {
-  if (!restoreAIProvider()) resetAIState();
+export async function revertToSavedAI() {
+  if (restoreAIProvider()) return;
+  const rec = lsRead();
+  if (rec && rec.v === 2 && vault) {
+    try {
+      const apiKey = await openSealed(rec, vault.key);
+      if (initAIProvider({ apiKey, modelId: rec.modelId, customModel: rec.customModel || "" })) return;
+    } catch (_) {}
+  }
+  resetAIState();
 }
 
 function resetAIState() {
@@ -391,6 +512,9 @@ function resetAIState() {
 /** Explicit manual disconnect — the ONLY thing that deletes the saved key. */
 export function clearAIProvider() {
   resetAIState();
+  vault = null;
+  failedUnlocks = 0;
+  unlockBlockedUntil = 0;
   try {
     localStorage.removeItem(SAVED_KEY);
   } catch (_) {}
@@ -420,7 +544,29 @@ async function callProvider(messages, options = {}) {
   if (!rl.allowed) {
     throw new Error(L(`طلبات كثيرة خلال وقت قصير. أعد المحاولة بعد ${Math.ceil(rl.retryAfterMs / 1000)} ثانية.`, `Too many requests. Retry in ${Math.ceil(rl.retryAfterMs / 1000)} s.`));
   }
-  try { return await callProviderInner(messages, options); }
+  try {
+    // Temporary overload (HTTP 500/503): retry up to 2 more times with a short back-off before giving up.
+    let lastErr;
+    for (let i = 0; i < 3; i++) {
+      try { return await callProviderInner(messages, options); }
+      catch (e) {
+        lastErr = e;
+        if (!/\[[a-z]+ (500|503)\]/i.test(String(e && e.message))) throw e;
+        if (i < 2) await new Promise((r) => setTimeout(r, 1500 * (i + 1)));
+      }
+    }
+    // Still overloaded: try the sibling model of the same provider (same key) once, without changing the person's choice.
+    const needsVision = Array.isArray(messages) && messages.some((m) => Array.isArray(m.content) && m.content.some((p) => p.type === "image_url"));
+    const alt = FREE_MODELS.find((m) => m.provider === state.provider && m.model !== state.model && (!needsVision || m.vision));
+    if (alt) {
+      const prev = state.model;
+      state.model = alt.model;
+      try { return await callProviderInner(messages, options); }
+      catch (_) { /* report the original error below */ }
+      finally { state.model = prev; }
+    }
+    throw lastErr;
+  }
   catch (e) {
     if (e && e.name === "TimeoutError") throw new Error(L("انتهت مهلة الاتصال بالمزوّد. أعد المحاولة.", "Provider timed out. Try again."));
     if (e instanceof TypeError) throw new Error(L("تعذّر الوصول إلى المزوّد (شبكة/حجب إقليمي/VPN/مانع إعلانات). جرّب شبكة أخرى أو VPN.", "Could not reach the provider (network, regional block, VPN or ad-blocker). Try another network or a VPN."));

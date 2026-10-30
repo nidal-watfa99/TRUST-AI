@@ -6,6 +6,8 @@
  */
 import { analyze, WEIGHTS } from "./risk-engine.js";
 import { escapeHtml } from "./security.js";
+import { mountTransparency } from "./transparency.js";
+import { getAIStatus, isAIAvailable, isVisionAvailable } from "./ai-provider.js";
 
 const L = {
   ar: {
@@ -326,6 +328,7 @@ export function renderSourceReport(el, { text, result, lang = "ar" }) {
       <div><div class="sr-vlabel" style="color:${col}">${s.verdict} · ${s[result.level] || ""}</div><p>${s[verdictKey]}</p></div>
     </div>
 
+    <section class="result-section" id="sr-evidence"></section>
     <section class="result-section"><h3>${s.sourceTitle}</h3>${sourceHtml}</section>
     <section class="result-section"><h3>${s.claimedTitle}</h3>${claimedHtml}</section>
     <section class="result-section"><h3>${s.arcTitle}</h3><p class="muted">${s.arcHint}</p>${arcChart(sentences, s) || `<p class="muted">${s.noSource}</p>`}</section>
@@ -333,4 +336,11 @@ export function renderSourceReport(el, { text, result, lang = "ar" }) {
     <section class="result-section"><h3>${s.radarTitle}</h3><p class="muted">${s.radarHint}</p>${radarChart(result, s)}</section>
     <section class="result-section"><h3>${s.checkTitle}</h3><p class="muted">${s.checkLead}</p><ul class="sr-checks">${checks}</ul>
       ${queries.length ? `<h4 class="sr-h4">${s.queryTitle}</h4><ul class="sr-queries">${queries.map((q) => `<li><code>${esc(q)}</code></li>`).join("")}</ul>` : ""}</section>`;
+  try {
+    mountTransparency(el.querySelector("#sr-evidence"), {
+      result, lang,
+      hosts: links.filter((l) => l.ok).map((l) => l.host),
+      aiAvailable: isAIAvailable(), aiVision: isVisionAvailable(), aiModel: getAIStatus().model || "",
+    });
+  } catch (_) { /* the report must render even if the transparency panel fails */ }
 }

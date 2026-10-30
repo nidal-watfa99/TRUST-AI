@@ -12,7 +12,7 @@
 
 <br/>
 
-![Version](https://img.shields.io/badge/version-3.1.0-22d3ee?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-3.2.0-22d3ee?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge)
 ![Dependencies](https://img.shields.io/badge/dependencies-0-8b5cf6?style=for-the-badge)
 ![Build](https://img.shields.io/badge/build%20step-none-f97316?style=for-the-badge)
@@ -51,6 +51,17 @@
 - **حكم الأخبار «صادق / كاذب»** بالأدلة: بحث Gemini الحيّ + سجلات ClaimReview، ويُخفَّض الحكم إلى «غير مثبت» عند غياب الدليل.
 - **أرقام مشبوهة من الخارج:** قاعدة أنماط ونطاقات موثّقة (لا أرقام أشخاص) + ملف متصل + خطوات الإنقاذ، وتظهر في بحث قاعدة الاحتيال وفي السجل.
 - بعد النشر: ضع الرابط المطلق في وسوم `og:image` لتظهر صورة المشاركة في واتساب/تيليغرام.
+
+---
+
+## 🆕 v3.2 — الثقة والشفافية
+
+- **إصلاح الإنذارات الكاذبة:** كان فاحص الروابط يصنّف مواقع سليمة (groups.google.com، amazon.de، help.netflix.com، irs.gov…) كانتحال بسبب مطابقة نصية قصيرة. استُبدل بـ `js/domain-intel.js`: فك punycode، كشف الحروف المموّهة (`paypa1`, `rnicrosoft`, حروف سيريلية)، الأخطاء الإملائية، الكلمات الخادعة (`paypal-secure`)، وضع الاسم في النطاق الفرعي، مع **قائمة نطاقات رسمية** لا تُنذر.
+- **حدّ أدنى مُعلَن للدرجة:** رابط يحاكي علامة معروفة أو يشير إلى IP مباشر يرفع الدرجة إلى حدّ أدنى، ويُذكر ذلك صراحةً في النتيجة (`transparent.floor`).
+- **«الأدلة وحدود الفحص»** في تقرير المصدر: لكل إشارة → مصدرها (قاعدة محلية / ذكاء اصطناعي / بحث خارجي) ودرجة يقينها، وقائمة بما **لم** يُفحص.
+- **عمر النطاق (RDAP) — اختياري ومعطّل افتراضيًا:** يُرسل اسم النطاق فقط إلى rdap.org. تجريبي وقد لا يعمل مع بعض اللواحق، وعند الفشل يُعرض «لم يُفحص» لا «آمن».
+- **حماية المفتاح بكلمة سر (اختياري):** PBKDF2-SHA256 (250 ألف تكرار) ← AES-256-GCM عبر WebCrypto. كلمة السر لا تُحفظ ولا تُرسل، والمفتاح المشفّر لا يُفتح تلقائيًا في زيارة جديدة، وتأخير متصاعد بعد 3 محاولات خاطئة.
+- **حدود معروفة:** لا مقارنة بقواعد سمعة حيّة (Safe Browsing/PhishTank) لأنها تحتاج خادمًا وسيطًا أو مفتاحًا؛ ومجموعة اختبار الروابط (`tests/link-accuracy.test.js`) أمثلة اصطناعية للحماية من التراجع وليست قياس دقة على بيانات حقيقية.
 
 ---
 
@@ -277,7 +288,7 @@ TRUST-AI/
 - 14 طبقة حماية (انظر الجدول أعلاه) + وحدة `security.js` v3 + `guard.js` + `shield-ui.js`
 - CSP أشد: `script-src-attr 'none'` و`form-action 'none'`؛ إزالة وسوم `<meta>` غير الفعّالة
 - مفتاح Gemini انتقل من الرابط إلى ترويسة `x-goog-api-key`
-- Service Worker بقائمة بيضاء، والكاش `trust-ai-v3.1.1`
+- Service Worker بقائمة بيضاء، والكاش `trust-ai-v3.2.0`
 - تحقق صارم من تخزين السجل والعدّاد والبلاغات وقاعدة الاحتيال
 - ملفات جديدة: `_headers`، `LICENSE`، `.well-known/security.txt`، `CODEOWNERS`، `dependabot.yml`، `security.yml`، `audit.mjs`، `security.test.js`
 - `deploy.yml` يشغّل الاختبارات أولاً وينشر الملفات التشغيلية فقط

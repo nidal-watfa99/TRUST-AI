@@ -52,7 +52,7 @@ assert((await f.saveAIConfigAsync()).ok === true, "save is confirmed (ok:true)")
 assert(f.initAIProvider({ apiKey: "bad key", modelId: m.id }) === false, "invalid key refused in memory");
 assert(store.has("trustai_ai_cfg"), "an invalid key does NOT erase the saved key");
 f.initAIProvider({ apiKey: "AIzaSyAnotherKey_ABCDEFGHIJ12345678", modelId: m.id }); // a new, not-yet-verified key
-f.revertToSavedAI(); // provider rejected it (401)
+await f.revertToSavedAI(); // provider rejected it (401)
 assert(f.isAIAvailable() && store.has("trustai_ai_cfg"), "after a rejected new key the previous saved key is back");
 assert(JSON.parse(store.get("trustai_ai_cfg")).apiKey === KEY, "saved key is still the original one");
 store.delete("trustai_ai_cfg"); // browser evicted localStorage while the app is open

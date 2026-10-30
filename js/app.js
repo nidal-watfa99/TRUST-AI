@@ -15,6 +15,10 @@ import {
   syncAIConfig,
   followSavedAIConfig,
   revertToSavedAI,
+  getKeyProtectionState,
+  enableKeyProtection,
+  disableKeyProtection,
+  unlockAIConfig,
   requestPersistentStorage,
   isAIAvailable,
   isVisionAvailable,
@@ -189,6 +193,10 @@ function bindEvents() {
   $("#btn-save-ai")?.addEventListener("click", onSaveAI);
   $("#btn-clear-ai")?.addEventListener("click", onClearAI);
   $("#btn-test-ai")?.addEventListener("click", onTestAI);
+  $("#btn-lock-enable")?.addEventListener("click", () => onLockAction("enable"));
+  $("#btn-lock-unlock")?.addEventListener("click", () => onLockAction("unlock"));
+  $("#btn-lock-disable")?.addEventListener("click", () => onLockAction("disable"));
+  $("#ai-pass")?.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); onLockAction($("#btn-lock-unlock")?.classList.contains("hidden") ? "enable" : "unlock"); } });
 
   $("#input-text")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) onAnalyze();
@@ -738,13 +746,92 @@ function syncModelSelectToStatus() {
 function bindAIPersistence() {
   const refresh = () => { syncModelSelectToStatus(); updateAIStatusUI(); };
   // localStorage empty (browser wiped it)? recover from the IndexedDB mirror.
-  if (!isAIAvailable()) restoreAIProviderAsync().then((ok) => { if (ok) refresh(); }).catch(() => {});
+  if (!isAIAvailable()) restoreAIProviderAsync().then(async (ok) => { if (ok) refresh(); else if ((await getKeyProtectionState()) === "locked") { refresh(); showToast(LOCK_TXT[getLang() === "ar" ? "ar" : "en"].locktoast); } }).catch(() => {});
   requestPersistentStorage();
   const resync = () => { syncAIConfig().then((changed) => { if (changed) refresh(); }).catch(() => {}); };
   window.addEventListener("pageshow", resync);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") resync(); });
   window.addEventListener("focus", resync);
   window.addEventListener("storage", (e) => { if (e.key === "trustai_ai_cfg" && followSavedAIConfig()) refresh(); });
+}
+
+// ── Optional passphrase protection for the saved key ─────────────────────
+const LOCK_TXT = {
+  ar: {
+    title: "حماية المفتاح بكلمة سر (اختياري)",
+    none: "أضف مفتاحًا وفعّله أولًا، ثم يمكنك حمايته بكلمة سر.",
+    unsaved: "المفتاح يعمل في هذه الجلسة. اضغط «حفظ وتفعيل» أولًا.",
+    plain: "المفتاح محفوظ على جهازك بدون كلمة سر. يمكنك تشفيره بكلمة سر لا تُحفظ في أي مكان.",
+    locked: "🔒 المفتاح محفوظ ومشفّر — أدخل كلمة السر لفتحه.",
+    unlocked: "🔓 المفتاح مشفّر على جهازك وهو مفتوح في هذه الجلسة.",
+    ph: "كلمة السر (8 أحرف على الأقل)",
+    enable: "تفعيل الحماية", unlock: "فتح القفل", disable: "إيقاف الحماية",
+    warn: "إن نسيت كلمة السر فلا يمكن استرجاع المفتاح (أضف مفتاحًا جديدًا). لا نحفظ كلمة السر ولا نرسلها لأحد.",
+    short: "كلمة السر قصيرة: 8 أحرف على الأقل.", wrong: "كلمة السر غير صحيحة.", ok: "تم.",
+    wait: "محاولات كثيرة خاطئة. انتظر ثوانٍ ثم أعد المحاولة.", fail: "تعذّر تنفيذ العملية. جرّب مرة أخرى.",
+    enabledOk: "تم تشفير المفتاح بكلمة سر. سيُطلب فتحه عند كل زيارة جديدة.", disabledOk: "أُوقفت الحماية. المفتاح محفوظ بدون كلمة سر.", unlockedOk: "تم فتح المفتاح وهو متصل.",
+    locktoast: "المفتاح مقفل — افتح الإعدادات وأدخل كلمة السر.",
+  },
+  en: {
+    title: "Passphrase protection for the saved key (optional)",
+    none: "Add and activate a key first, then you can protect it with a passphrase.",
+    unsaved: "The key works for this session. Press “Save & activate” first.",
+    plain: "The key is saved on this device without a passphrase. You can encrypt it with a passphrase that is never stored anywhere.",
+    locked: "🔒 The key is saved and encrypted — enter the passphrase to unlock it.",
+    unlocked: "🔓 The key is encrypted on this device and unlocked for this session.",
+    ph: "Passphrase (at least 8 characters)",
+    enable: "Enable protection", unlock: "Unlock", disable: "Turn off protection",
+    warn: "If you forget the passphrase the key cannot be recovered (just add a new one). The passphrase is never stored or sent anywhere.",
+    short: "Passphrase too short: 8 characters minimum.", wrong: "Wrong passphrase.", ok: "Done.",
+    wait: "Too many wrong attempts. Wait a few seconds and retry.", fail: "The operation failed. Try again.",
+    enabledOk: "The key is now encrypted with your passphrase. It will need unlocking on each new visit.", disabledOk: "Protection turned off. The key is saved without a passphrase.", unlockedOk: "Key unlocked and connected.",
+    locktoast: "The key is locked — open Settings and enter the passphrase.",
+  },
+};
+
+async function updateLockUI() {
+  const box = $("#mp-lock");
+  if (!box) return;
+  const L = LOCK_TXT[getLang() === "ar" ? "ar" : "en"];
+  const st = await getKeyProtectionState();
+  $("#mp-lock-title").textContent = L.title;
+  $("#mp-lock-state").textContent = L[st] || L.none;
+  $("#mp-lock-warn").textContent = L.warn;
+  const pass = $("#ai-pass");
+  pass.placeholder = L.ph;
+  const show = (id, on) => $(id)?.classList.toggle("hidden", !on);
+  $("#btn-lock-enable").textContent = L.enable;
+  $("#btn-lock-unlock").textContent = L.unlock;
+  $("#btn-lock-disable").textContent = L.disable;
+  show("#ai-pass", st === "plain" || st === "locked");
+  show("#btn-lock-enable", st === "plain");
+  show("#btn-lock-unlock", st === "locked");
+  show("#btn-lock-disable", st === "unlocked");
+  box.classList.toggle("hidden", st === "none");
+}
+
+function lockMsg(text, ok) {
+  const el = $("#mp-lock-msg");
+  if (!el) return;
+  el.textContent = text;
+  el.className = "ai-test-result " + (ok ? "ok" : "bad");
+}
+
+async function onLockAction(kind) {
+  const L = LOCK_TXT[getLang() === "ar" ? "ar" : "en"];
+  const pass = $("#ai-pass")?.value || "";
+  let r;
+  if (kind === "enable") r = await enableKeyProtection(pass);
+  else if (kind === "unlock") r = await unlockAIConfig(pass);
+  else r = await disableKeyProtection();
+  if (r.ok) {
+    if ($("#ai-pass")) $("#ai-pass").value = "";
+    lockMsg(kind === "enable" ? L.enabledOk : kind === "unlock" ? L.unlockedOk : L.disabledOk, true);
+    if (kind === "unlock") { syncModelSelectToStatus(); updateAIStatusUI(); }
+  } else {
+    lockMsg(r.reason === "short" ? L.short : r.reason === "wrong" ? L.wrong : r.reason === "wait" ? L.wait : L.fail, false);
+  }
+  updateLockUI();
 }
 
 async function onSaveAI() {
@@ -762,7 +849,7 @@ async function onSaveAI() {
   const ar = getLang() === "ar";
   if (!res.ok && res.rejected) {
     // The provider itself refused this key: do not keep it, and do NOT touch the key saved before.
-    revertToSavedAI();
+    await revertToSavedAI();
     syncModelSelectToStatus();
     updateAIStatusUI();
     showAIResult(false, `${t("connectionFail")}: ${res.error || ""}`);
@@ -771,6 +858,13 @@ async function onSaveAI() {
   // Verified — or the check was inconclusive (network/limit/region): the key itself is fine, so keep it.
   const saved = await saveAIConfigAsync();
   updateAIStatusUI();
+  updateLockUI();
+  if (saved.locked) {
+    showAIResult(false, ar
+      ? "المفتاح المحفوظ سابقًا محمي بكلمة سر وهو مقفل. افتح القفل أولًا (القسم أدناه)، أو اضغط «إلغاء التفعيل» لحذفه ثم أضف مفتاحًا جديدًا. المفتاح الجديد يعمل الآن في هذه الجلسة فقط."
+      : "The previously saved key is passphrase-protected and locked. Unlock it first (section below) or press Disconnect to delete it and add a new one. The new key works for this session only.");
+    return;
+  }
   if ($("#ai-key")) $("#ai-key").value = "";
   if (res.ok && saved.ok) {
     showAIResult(true, `${t("connectionOk")} — ${ar ? "تم حفظ المفتاح على هذا الجهاز وسيبقى حتى تحذفه يدويًا." : "Key saved on this device; it stays until you remove it."}`);
@@ -808,7 +902,7 @@ async function onTestAI() {
   const res = await testConnection();
   if (btn) btn.disabled = false;
   if (res.ok) await saveAIConfigAsync();
-  else if (typed && res.rejected) { revertToSavedAI(); syncModelSelectToStatus(); }
+  else if (typed && res.rejected) { await revertToSavedAI(); syncModelSelectToStatus(); }
   showAIResult(res.ok, res.ok ? t("connectionOk") : `${t("connectionFail")}: ${res.error || ""}`);
   updateAIStatusUI();
 }
@@ -819,7 +913,13 @@ function updateAIStatusUI() {
   if (badge) {
     badge.textContent = status.available ? t("aiConnected") : t("aiDisconnected");
     badge.className = "ai-status " + (status.available ? "on" : "off");
+    if (!status.available) {
+      getKeyProtectionState().then((st) => {
+        if (st === "locked" && !isAIAvailable()) badge.textContent = getLang() === "ar" ? "🔒 المفتاح مقفل — أدخل كلمة السر في الإعدادات" : "🔒 Key locked — enter the passphrase in Settings";
+      });
+    }
   }
+  updateLockUI();
   updateModeBanner();
   renderModelsPanel();
   document.dispatchEvent(new CustomEvent("trustai:ai-changed"));

@@ -8,6 +8,8 @@
  * Nigerian networks, casinos, investment platforms, companies & brands,
  * and strong pyramid / network marketing detection.
  */
+import { analyzeDomain } from "./domain-intel.js";
+
 
 export const WEIGHTS = {
   urgency: 15,
@@ -270,7 +272,9 @@ function analyzeSingleLink(url) {
     }
   }
 
-  for (const p of SUSPICIOUS_HOST_PATTERNS) {
+  const domainInfo = analyzeDomain(host);
+  // A brand's own domain (support.apple.com, accounts.google.com) is not "suspicious" just because of a word like support/account.
+  for (const p of domainInfo.official ? [] : SUSPICIOUS_HOST_PATTERNS) {
     if (p.test(host) || p.test(path)) {
       indicators.push({ code: "suspicious_host", weight: 6, detail: p.source.slice(0, 30) });
       score += 6;
@@ -278,28 +282,15 @@ function analyzeSingleLink(url) {
     }
   }
 
-  for (const brand of KNOWN_BRANDS) {
-    if (host.includes(brand) && !host.endsWith(brand + ".com") && !host.endsWith(brand + ".net") && !host.endsWith(brand + ".org") && !host.endsWith(brand + ".io")) {
-      if (!host.match(new RegExp(`(^|\\.)${brand}\\.(com|net|org|co|io|app|me)$`))) {
-        indicators.push({ code: "brand_spoof", weight: 10, detail: brand });
-        score += 10;
-        isBrandSpoof = true;
-        flags.push("brand_spoof:" + brand);
-      }
-    }
-  }
-
-  // Typosquatting-ish: brand name with extra chars (paypal-secure.com, micros0ft.com)
-  for (const brand of ["paypal", "microsoft", "apple", "google", "amazon", "binance", "facebook", "instagram", "whatsapp", "netflix"]) {
-    const re = new RegExp(brand.split("").join("[^a-z0-9]?") + "|[0o]" + brand.slice(1), "i");
-    if (re.test(host) && !host.includes(brand + ".com") && host !== brand + ".com") {
-      if (!flags.some((f) => f.startsWith("brand_spoof"))) {
-        indicators.push({ code: "typosquat", weight: 9, detail: brand });
-        score += 9;
-        isBrandSpoof = true;
-        flags.push("typosquat:" + brand);
-      }
-    }
+  // Brand impersonation: exact-label / look-alike-glyph / combo / sub-domain tricks, with an allow-list of
+  // official domains (see domain-intel.js). Replaces the old substring match that flagged real sites
+  // such as groups.google.com, amazon.de or irs.gov.
+  for (const f of domainInfo.findings) {
+    const code = f.kind === "subdomain" || f.kind === "other_tld" ? "brand_spoof" : "typosquat";
+    indicators.push({ code, weight: f.weight, detail: f.brand, kind: f.kind });
+    score += f.weight;
+    isBrandSpoof = true;
+    flags.push(code + ":" + f.brand);
   }
 
   const parts = host.split(".");
@@ -460,6 +451,22 @@ export function analyze(input = {}) {
   for (const k of Object.keys(categories)) score += categories[k];
   score = Math.min(100, Math.round(score));
 
+  // Score floor: a link that imitates a well-known brand (paypa1.com, paypal-secure.com, paypal.com.evil.top) or that
+  // points at a raw IP address is a strong signal on its own — it must not be diluted just because the message
+  // text is calm. The floor is reported openly in `transparent.floor`.
+  let floor = null;
+  for (const l of linkDetails) {
+    for (const ind of l.indicators) {
+      if (!ind.kind) continue;
+      const min = ind.kind === "typo" ? 30 : 55;
+      if (!floor || min > floor.min) floor = { min, reason: "brand_lookalike", kind: ind.kind, brand: ind.detail, host: l.host };
+    }
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(l.host || "") && (!floor || floor.min < 30)) floor = { min: 30, reason: "ip_host", kind: "ip_host", brand: "", host: l.host };
+  }
+  if (floor && score < floor.min) score = floor.min;
+  else if (floor) floor.applied = false;
+  if (floor && floor.applied === undefined) floor.applied = true;
+
   const levelObj = scoreToLevel(score);
   const level = levelObj.key;
 
@@ -508,6 +515,7 @@ export function analyze(input = {}) {
       score,
       breakdown,
       weights: { ...WEIGHTS },
+      floor,
     },
   };
 }
