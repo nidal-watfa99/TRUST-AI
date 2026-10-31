@@ -16,6 +16,9 @@ import {
   followSavedAIConfig,
   revertToSavedAI,
   getKeyProtectionState,
+  listSavedKeys,
+  activateSavedKey,
+  removeSavedKey,
   enableKeyProtection,
   disableKeyProtection,
   unlockAIConfig,
@@ -193,6 +196,7 @@ function bindEvents() {
   $("#btn-save-ai")?.addEventListener("click", onSaveAI);
   $("#btn-clear-ai")?.addEventListener("click", onClearAI);
   $("#btn-test-ai")?.addEventListener("click", onTestAI);
+  $("#mp-keyring-list")?.addEventListener("click", onKeyringClick);
   $("#btn-lock-enable")?.addEventListener("click", () => onLockAction("enable"));
   $("#btn-lock-unlock")?.addEventListener("click", () => onLockAction("unlock"));
   $("#btn-lock-disable")?.addEventListener("click", () => onLockAction("disable"));
@@ -755,6 +759,54 @@ function bindAIPersistence() {
   window.addEventListener("storage", (e) => { if (e.key === "trustai_ai_cfg" && followSavedAIConfig()) refresh(); });
 }
 
+// ── Saved keys (one per provider) ────────────────────────────────────────
+const KR_TXT = {
+  ar: { title: "المفاتيح المحفوظة على هذا الجهاز", on: "● مفعّل", use: "تفعيل", del: "حذف", locked: "🔒 مشفّر", noteLocked: "افتح القفل بكلمة السر أولًا ثم فعّل هذا المفتاح.", used: "تم التفعيل.", removed: "حُذف المفتاح.", fail: "تعذّر تفعيل المفتاح.", confirm: "حذف مفتاح «{p}» نهائيًا من هذا الجهاز؟", hint: "كل مفتاح يبقى محفوظًا إلى أن تحذفه بنفسك، ولا يستبدله مفتاح مزوّد آخر." },
+  en: { title: "Keys saved on this device", on: "● active", use: "Use", del: "Delete", locked: "🔒 encrypted", noteLocked: "Unlock with your passphrase first, then activate this key.", used: "Activated.", removed: "Key deleted.", fail: "Could not activate the key.", confirm: "Permanently delete the “{p}” key from this device?", hint: "Each key stays saved until you delete it yourself; a key for another provider never replaces it." },
+};
+
+async function renderKeyring() {
+  const box = $("#mp-keyring");
+  if (!box) return;
+  const L = KR_TXT[getLang() === "ar" ? "ar" : "en"];
+  const rows = await listSavedKeys();
+  box.classList.toggle("hidden", rows.length === 0);
+  $("#mp-keyring-title").textContent = L.title;
+  const ul = $("#mp-keyring-list");
+  ul.innerHTML = rows.map((r) => `
+    <li class="kr-row" data-provider="${escapeHtml(r.provider)}">
+      <span class="kr-name">${escapeHtml(PROVIDERS[r.provider]?.name || r.provider)}</span>
+      <span class="kr-key" dir="ltr">${r.sealed ? escapeHtml(L.locked) : "••••" + escapeHtml(r.tail || "")}</span>
+      ${r.active ? `<span class="kr-on">${escapeHtml(L.on)}</span>` : `<button type="button" class="btn btn-secondary kr-use">${escapeHtml(L.use)}</button>`}
+      <button type="button" class="btn btn-ghost kr-del">${escapeHtml(L.del)}</button>
+    </li>`).join("") + (rows.length ? `<li class="muted kr-hint">${escapeHtml(L.hint)}</li>` : "");
+}
+
+function krMsg(text, ok) {
+  const el = $("#mp-keyring-msg");
+  if (!el) return;
+  el.textContent = text;
+  el.className = "ai-test-result " + (ok ? "ok" : "bad");
+}
+
+async function onKeyringClick(e) {
+  const row = e.target.closest(".kr-row");
+  if (!row) return;
+  const provider = row.dataset.provider;
+  const L = KR_TXT[getLang() === "ar" ? "ar" : "en"];
+  if (e.target.closest(".kr-use")) {
+    const r = await activateSavedKey(provider);
+    if (r.ok) { syncModelSelectToStatus(); updateAIStatusUI(); renderModelsPanel(); krMsg(L.used, true); }
+    else krMsg(r.reason === "locked" ? L.noteLocked : L.fail, false);
+  } else if (e.target.closest(".kr-del")) {
+    if (!confirm(L.confirm.replace("{p}", PROVIDERS[provider]?.name || provider))) return;
+    await removeSavedKey(provider);
+    syncModelSelectToStatus(); updateAIStatusUI(); renderModelsPanel(); krMsg(L.removed, true);
+  }
+  renderKeyring();
+  updateLockUI();
+}
+
 // ── Optional passphrase protection for the saved key ─────────────────────
 const LOCK_TXT = {
   ar: {
@@ -881,9 +933,9 @@ async function onSaveAI() {
   }
 }
 
-function onClearAI() {
+async function onClearAI() {
   if (!confirm(t("clearAIConfirm"))) return;
-  clearAIProvider();
+  await clearAIProvider();
   if ($("#ai-key")) $("#ai-key").value = "";
   updateAIStatusUI();
   updateModeBanner();
@@ -920,6 +972,7 @@ function updateAIStatusUI() {
     }
   }
   updateLockUI();
+  renderKeyring();
   updateModeBanner();
   renderModelsPanel();
   document.dispatchEvent(new CustomEvent("trustai:ai-changed"));

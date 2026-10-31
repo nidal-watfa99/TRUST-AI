@@ -5,6 +5,7 @@
  * professional SVG charts. Offline engine first, optional model layer second.
  */
 import { buildDossier, mergeAI, normalizeUniversal, dossierToText, KINDS } from "./client-engine.js";
+import { scanImageFile, forensicsFacts } from "./image-forensics.js";
 import { analyzeUniversal, isAIAvailable, isVisionAvailable, getAIStatus, verifyNewsWithAI, searchFactChecks } from "./ai-provider.js";
 import { normalizeNewsVerdict, wantsNewsVerdict } from "./news-verdict.js";
 import { detectSensitivePaste } from "./risk-engine.js";
@@ -163,7 +164,7 @@ async function addFiles(files) {
       let real = null;
       try { real = sniffImageType(new Uint8Array(await f.slice(0, 16).arrayBuffer())); } catch (_) { /* rejected below */ }
       if (!real || real === "image/gif") { toast(u.fileType, true); securityLog("client_image_rejected", { claimed: f.type }); continue; }
-      try { state.images.push({ name: sanitizeText(f.name || "image", 80), dataUrl: await shrinkImage(f) }); } catch (_) { toast(u.fileType, true); }
+      try { { const forensics = await scanImageFile(f, getLang()); state.images.push({ name: sanitizeText(f.name || "image", 80), dataUrl: await shrinkImage(f), forensics }); } } catch (_) { toast(u.fileType, true); }
     } else if (isTxt) {
       if (f.size > 200 * 1024) { toast(u.fileTooBig, true); continue; }
       const txt = sanitizeText(await f.text(), 200000).trim();
@@ -288,9 +289,10 @@ async function runNewsVerdict(text) {
   const lang = getLang();
   try {
     const factChecks = await searchFactChecks(text, lang);
-    const res = await verifyNewsWithAI({ text, images: state.input?.images || [], lang, factChecks, today: new Date().toISOString().slice(0, 10) });
+    const imageFacts = forensicsFacts(state.images.map((im) => im.forensics));
+    const res = await verifyNewsWithAI({ text, images: state.input?.images || [], lang, factChecks, imageFacts, today: new Date().toISOString().slice(0, 10) });
     if (res?.raw) {
-      const data = normalizeNewsVerdict(res.raw, { sources: res.sources, factChecks, grounded: res.grounded, provider: res.provider, model: res.model });
+      const data = normalizeNewsVerdict(res.raw, { sources: res.sources, chunks: res.chunks, supports: res.supports, queries: res.queries, factChecks, grounded: res.grounded, searchUnavailable: res.searchUnavailable, provider: res.provider, model: res.model });
       state.news = data ? { status: "done", data } : { status: "error", error: lang === "ar" ? "تعذّر فهم نتيجة التحقق." : "Could not read the verification result." };
     } else state.news = { status: "error", error: res?.error || (lang === "ar" ? "تعذّر التحقق." : "Verification failed.") };
   } catch (e) {
@@ -651,6 +653,12 @@ const NV = {
     connect: "ربط نموذج", reverse: "ابحث عن أصل الصورة", noteConflict: "تعارضت الأدلة، لذلك لم نصدر حكماً قاطعاً.",
     noteNoSources: "لم نجد مصدراً قابلاً للفتح يسند الحكم، فلم نعتمده.", noteModelOnly: "اعتمد النموذج على معرفته فقط دون أدلة كافية، فلم نعتمد الحكم.",
     supports: "يؤيّد", refutes: "يفنّد", context: "سياق", claimV: { true: "صحيح", false: "كاذب", unproven: "غير مثبت" },
+    queries: "ما الذي بحثنا عنه فعلًا", firstSeen: "أول ظهور معروف", others: "مصادر أخرى استُرجعت", explSrc: "مصادر هذا الشرح", claimSrc: "المصدر",
+    manip: { none: "لا مؤشر تلاعب", fabricated: "خبر مختلَق", old_content_recycled: "مادة قديمة أُعيد نشرها كأنها جديدة", out_of_context: "مُقتطع من سياقه", edited_image: "صورة معدّلة", ai_generated: "مولَّد بالذكاء الاصطناعي", satire: "سخرية/محتوى ساخر", misattributed: "منسوب لغير صاحبه", unknown: "غير محدد" },
+    manipTitle: "نوع التضليل", fx: "فحص بيانات الصورة (من الملف الأصلي)", fxNote: "وجود بيانات توليد بالذكاء الاصطناعي دليل قوي. غيابها لا يثبت شيئًا: المنصات تحذفها وأي شخص يستطيع حذفها.",
+    unlinked: "ادّعاء النموذج — لم نجد له مصدرًا مسترجعًا يسنده", searchOff: "البحث الحي لم يكن متاحًا لهذا المفتاح/النموذج، فاعتمد التحقق على معرفة النموذج فقط ولن نجزم بالحكم.",
+    noteUnlinked: "الأدلة التي ذكرها النموذج لم نستطع ربطها بصفحات استُرجعت فعلًا، فلم نعتمد الحكم.", noteSingle: "مصدر مستقل واحد لا يكفي للجزم بأن الخبر صادق، فبقي غير مثبت.",
+    lensNote: "بحث عكسي إضافي (يدويًا):",
   },
   en: {
     title: "News verification verdict", true: "TRUE news", false: "FALSE news", unproven: "Unproven — not enough evidence to judge",
@@ -663,6 +671,12 @@ const NV = {
     connect: "Connect a model", reverse: "Find the image's origin", noteConflict: "Evidence conflicted, so no firm verdict was issued.",
     noteNoSources: "No openable source supported the verdict, so it was not adopted.", noteModelOnly: "The model relied on memory only without enough evidence, so the verdict was not adopted.",
     supports: "Supports", refutes: "Refutes", context: "Context", claimV: { true: "True", false: "False", unproven: "Unproven" },
+    queries: "What we actually searched", firstSeen: "Earliest known appearance", others: "Other retrieved sources", explSrc: "Sources for this explanation", claimSrc: "Source",
+    manip: { none: "No sign of manipulation", fabricated: "Fabricated story", old_content_recycled: "Old material recycled as new", out_of_context: "Taken out of context", edited_image: "Edited image", ai_generated: "AI-generated", satire: "Satire", misattributed: "Misattributed", unknown: "Undetermined" },
+    manipTitle: "Type of deception", fx: "Image metadata check (from the original file)", fxNote: "AI-generation metadata is strong evidence. Its absence proves nothing: platforms strip it and anyone can remove it.",
+    unlinked: "Model's claim — no retrieved source backs it", searchOff: "Live search was not available for this key/model, so verification used model knowledge only and we will not issue a firm verdict.",
+    noteUnlinked: "The evidence the model cited could not be tied to pages that were actually retrieved, so the verdict was not adopted.", noteSingle: "One independent source is not enough to call it true, so it stays unproven.",
+    lensNote: "Extra reverse search (manual):",
   },
 };
 const NV_COLOR = { true: "#22c55e", false: "#ef4444", unproven: "#94a3b8" };
@@ -699,20 +713,29 @@ function newsVerdictSection(n, d) {
   const seg = (k, cnt, c) => (cnt ? `<i class="nv-seg" style="width:${(cnt / tot) * 100}%;background:${c}" title="${esc(s[k])}: ${cnt}"></i>` : "");
   const stanceLabel = { supports: s.supports, refutes: s.refutes, context: s.context };
   const stanceColor = { supports: "#22c55e", refutes: "#ef4444", context: "#94a3b8" };
-  const note = v.notes.includes("conflict") ? s.noteConflict : v.notes.includes("no_sources") ? s.noteNoSources : v.notes.includes("model_only") ? s.noteModelOnly : "";
+  const note = v.notes.includes("conflict") ? s.noteConflict : v.notes.includes("no_sources") ? s.noteNoSources : v.notes.includes("unlinked") ? s.noteUnlinked : v.notes.includes("single_source") ? s.noteSingle : v.notes.includes("model_only") ? s.noteModelOnly : "";
   const safe = (u) => (isSafeUrl(u) ? u : "");
+  const chip = (l) => (safe(l.url) ? `<a class="nv-src" href="${esc(safe(l.url))}" target="_blank" rel="noopener noreferrer">${esc(l.title || "source")} ↗</a>` : "");
+  const manip = v.manipulation && v.manipulation !== "unknown" ? `<p class="nv-manip"><strong>${esc(s.manipTitle)}:</strong> <span class="nv-chip" style="background:${v.manipulation === "none" ? "#22c55e" : "#f97316"}">${esc(s.manip[v.manipulation] || "")}</span>${v.firstSeen ? ` <span class="muted">· ${esc(s.firstSeen)}: ${esc(v.firstSeen)}</span>` : ""}</p>` : (v.firstSeen ? `<p class="nv-manip"><strong>${esc(s.firstSeen)}:</strong> ${esc(v.firstSeen)}</p>` : "");
+  const queriesHtml = v.queries && v.queries.length ? `<details class="nv-queries"><summary>🔎 ${esc(s.queries)} (${v.queries.length})</summary><ul>${v.queries.map((q) => `<li dir="auto">${esc(q)}</li>`).join("")}</ul></details>` : "";
+  const searchOff = v.searchUnavailable ? `<p class="cl-note-warn">${esc(s.searchOff)}</p>` : "";
+  const explSrc = v.explanationLinks && v.explanationLinks.length ? `<p class="nv-srcs"><strong>${esc(s.explSrc)}:</strong> ${v.explanationLinks.map(chip).join(" ")}</p>` : "";
+  const othersHtml = v.others && v.others.length ? `<details class="nv-others"><summary>${esc(s.others)} (${v.others.length})</summary><p class="nv-srcs">${v.others.map(chip).join(" ")}</p></details>` : "";
 
-  const claims = v.claims.length ? `<h4 class="cl-h4">${esc(s.claims)}</h4><ul class="nv-claims">${v.claims.map((c) => `<li class="nv-claim" style="--c:${NV_COLOR[c.verdict]}"><span class="nv-chip" style="background:${NV_COLOR[c.verdict]}">${esc(s.claimV[c.verdict])}</span><div><p>${esc(c.claim)}</p>${c.explanation ? `<small>${esc(c.explanation)}</small>` : ""}${c.evidence.length ? `<small class="muted"> · ${c.evidence.map((i) => "#" + (i + 1)).join(" ")}</small>` : ""}</div></li>`).join("")}</ul>` : "";
+  const claims = v.claims.length ? `<h4 class="cl-h4">${esc(s.claims)}</h4><ul class="nv-claims">${v.claims.map((c) => `<li class="nv-claim" style="--c:${NV_COLOR[c.verdict]}"><span class="nv-chip" style="background:${NV_COLOR[c.verdict]}">${esc(s.claimV[c.verdict])}</span><div><p>${esc(c.claim)}</p>${c.explanation ? `<small>${esc(c.explanation)}</small>` : ""}${c.evidence.length ? `<small class="muted"> · ${c.evidence.map((i) => "#" + (i + 1)).join(" ")}</small>` : ""}${c.links && c.links.length ? `<p class="nv-srcs">${c.links.map(chip).join(" ")}</p>` : ""}</div></li>`).join("")}</ul>` : "";
 
-  const evid = v.evidence.length ? `<h4 class="cl-h4">${esc(s.evid)}</h4><ul class="nv-evid">${v.evidence.map((e, i) => `<li class="nv-ev" style="--c:${stanceColor[e.stance]}">
+  const evid = v.evidence.length ? `<h4 class="cl-h4">${esc(s.evid)}</h4><ul class="nv-evid">${v.evidence.map((e, i) => `<li class="nv-ev${e.kind === "model" && !e.linked && v.grounded ? " nv-unlinked" : ""}" style="--c:${stanceColor[e.stance]}">
       <span class="nv-badge" aria-hidden="true">${esc((e.publisher || "?").trim().charAt(0).toUpperCase())}</span>
       <div class="nv-ev-body"><div class="nv-ev-top"><strong>#${i + 1} ${esc(e.publisher || "—")}</strong><span class="nv-chip" style="background:${stanceColor[e.stance]}">${esc(stanceLabel[e.stance])}</span>${e.rating ? `<span class="nv-chip rating">${esc(s.rating)}: ${esc(e.rating)}</span>` : ""}</div>
-      ${e.title ? `<p class="nv-ev-title">${esc(e.title)}</p>` : ""}${e.summary ? `<p class="nv-ev-sum">${esc(e.summary)}</p>` : ""}
+      ${e.kind === "model" && !e.linked && v.grounded ? `<p class="nv-unl-note">⚠ ${esc(s.unlinked)}</p>` : ""}${e.title ? `<p class="nv-ev-title">${esc(e.title)}</p>` : ""}${e.summary ? `<p class="nv-ev-sum">${esc(e.summary)}</p>` : ""}
       <div class="nv-ev-meta">${e.date ? `<span>${esc(e.date)}</span>` : ""}${safe(e.url) ? `<a href="${esc(safe(e.url))}" target="_blank" rel="noopener noreferrer">${esc(s.open)} ↗</a>` : ""}</div></div></li>`).join("")}</ul>` : `<p class="muted">${esc(s.none)}</p>`;
 
   const cred = v.credibility ? `<h4 class="cl-h4">${esc(s.cred)}</h4>${credBars(v.credibility, ui())}` : "";
   const tl = v.timeline.length ? `<h4 class="cl-h4">${esc(s.timeline)}</h4><ol class="nv-timeline">${v.timeline.map((x) => `<li><b>${esc(x.date)}</b><span>${esc(x.event)}</span></li>`).join("")}</ol>` : "";
-  const imgs = state.images.length ? `<h4 class="cl-h4">${esc(s.images)}</h4><div class="cl-tray static">${state.images.map((im) => `<figure class="cl-thumb"><img src="${isSafeImageDataUrl(im.dataUrl) ? im.dataUrl : ""}" alt="${esc(im.name)}" /></figure>`).join("")}</div>${v.imageNotes ? `<p class="cl-p">${esc(v.imageNotes)}</p>` : ""}<p class="nv-rev"><a href="https://lens.google.com/" target="_blank" rel="noopener noreferrer">Google Lens ↗</a> <a href="https://tineye.com/" target="_blank" rel="noopener noreferrer">TinEye ↗</a> <span class="muted">${esc(s.reverse)}</span></p>` : "";
+  const fxLevel = { strong: "#ef4444", info: "#22c55e", note: "#94a3b8" };
+  const fxRows = state.images.map((im, i) => (im.forensics && im.forensics.findings.length
+    ? `<li><strong>${esc(im.name || "image " + (i + 1))}</strong><ul class="nv-fx">${im.forensics.findings.map((f) => `<li style="--c:${fxLevel[f.level] || "#94a3b8"}"><i></i><span>${esc(f.text)}</span></li>`).join("")}</ul></li>` : "")).join("");
+  const imgs = state.images.length ? `<h4 class="cl-h4">${esc(s.images)}</h4><div class="cl-tray static">${state.images.map((im) => `<figure class="cl-thumb"><img src="${isSafeImageDataUrl(im.dataUrl) ? im.dataUrl : ""}" alt="${esc(im.name)}" /></figure>`).join("")}</div>${v.imageNotes ? `<p class="cl-p">${esc(v.imageNotes)}</p>` : ""}${fxRows ? `<h4 class="cl-h4">${esc(s.fx)}</h4><ul class="nv-fxlist">${fxRows}</ul><p class="muted nv-fxnote">${esc(s.fxNote)}</p>` : ""}<p class="nv-rev muted">${esc(s.lensNote)} <a href="https://lens.google.com/" target="_blank" rel="noopener noreferrer">Google Lens ↗</a> <a href="https://tineye.com/" target="_blank" rel="noopener noreferrer">TinEye ↗</a></p>` : "";
 
   return `<section class="cl-card nv-card nv-${v.verdict}" style="--nv:${col}" aria-labelledby="nv-h">
     <h3 id="nv-h" class="cl-h">📰 ${esc(s.title)}</h3>
@@ -722,12 +745,13 @@ function newsVerdictSection(n, d) {
       <div class="nv-conf">${nvRing(v.confidence, col)}<small>${esc(s.conf)}</small></div>
     </div>
     <p class="nv-basis"><span class="nv-chip basis">${esc(s.basis[v.basis] || "")}</span>${v.provider ? ` <span class="muted" dir="ltr">${esc(v.provider)} / ${esc(v.model || "")}</span>` : ""}</p>
-    ${note ? `<p class="cl-note-warn">${esc(note)}</p>` : ""}
-    ${v.explanation ? `<h4 class="cl-h4">${esc(s.explain)}</h4><p class="cl-p nv-expl">${esc(v.explanation)}</p>` : ""}
+    ${note ? `<p class="cl-note-warn">${esc(note)}</p>` : ""}${searchOff}
+    ${manip}${queriesHtml}
+    ${v.explanation ? `<h4 class="cl-h4">${esc(s.explain)}</h4><p class="cl-p nv-expl">${esc(v.explanation)}</p>${explSrc}` : ""}
     <h4 class="cl-h4">${esc(s.balance)}</h4>
     <div class="nv-balance" role="img" aria-label="${esc(s.sup)} ${b.supports} / ${esc(s.ref)} ${b.refutes} / ${esc(s.ctx)} ${b.context}">${seg("sup", b.supports, "#22c55e")}${seg("ref", b.refutes, "#ef4444")}${seg("ctx", b.context, "#94a3b8")}</div>
     <p class="nv-legend"><span><i style="background:#22c55e"></i>${esc(s.sup)} ${b.supports}</span><span><i style="background:#ef4444"></i>${esc(s.ref)} ${b.refutes}</span><span><i style="background:#94a3b8"></i>${esc(s.ctx)} ${b.context}</span></p>
-    ${claims}${evid}${cred}${tl}${imgs}
+    ${claims}${evid}${othersHtml}${cred}${tl}${imgs}
     ${v.limits ? `<p class="cl-note"><strong>${esc(s.limits)}:</strong> ${esc(v.limits)}</p>` : ""}
   </section>`;
 }

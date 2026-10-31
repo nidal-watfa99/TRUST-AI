@@ -30,7 +30,7 @@ assert(b.getAIStatus().available === false, "fresh page load starts disconnected
 assert(b.restoreAIProvider() === true && b.getAIStatus().available === true, "key restored after reopening");
 assert(b.isAIAvailable() === true, "AI is available again without re-entering the key");
 
-b.clearAIProvider(); // manual disconnect
+await b.clearAIProvider(); // manual disconnect
 assert(!store.has("trustai_ai_cfg"), "manual disconnect removes the saved key");
 let c = await load(3);
 assert(c.restoreAIProvider() === false && c.getAIStatus().available === false, "after disconnect nothing is restored");
@@ -59,7 +59,7 @@ store.delete("trustai_ai_cfg"); // browser evicted localStorage while the app is
 assert((await f.syncAIConfig()) === false && store.has("trustai_ai_cfg"), "evicted storage is healed on return to the app");
 let g = await load(11);
 assert((await g.restoreAIProviderAsync()) === true && g.isAIAvailable(), "key comes back after a new page load");
-g.clearAIProvider();
+await g.clearAIProvider();
 assert(!store.has("trustai_ai_cfg") && !g.isAIAvailable(), "only the manual disconnect removes it");
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

@@ -68,7 +68,7 @@ assert(f.restoreAIProvider() === true, "plain key auto-connects again");
 
 // manual disconnect removes everything
 await e.enableKeyProtection(PASS);
-e.clearAIProvider();
+await e.clearAIProvider();
 assert(!store.has("trustai_ai_cfg") && (await e.getKeyProtectionState()) === "none", "manual disconnect deletes the sealed key too");
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
