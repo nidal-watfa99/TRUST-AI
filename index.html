@@ -306,9 +306,10 @@
         <h2 id="phone-title" class="about-title" data-i18n="phoneTitle">فحص أرقام الهواتف المشبوهة</h2>
         <p class="about-lead" data-i18n="phoneLead">أدخل الرقم مع رمز الدولة إن أمكن. لا نكشف هوية المتصل.</p>
         <div class="phone-form">
-          <input type="tel" id="phone-input" class="text-input" data-i18n-placeholder="phonePlaceholder" placeholder="+963 ..." autocomplete="off" inputmode="tel" />
+          <input type="tel" id="phone-input" class="text-input" dir="ltr" enterkeyhint="search" aria-label="رقم الهاتف / Phone number" data-i18n-placeholder="phonePlaceholder" placeholder="+963 ..." autocomplete="off" inputmode="tel" />
           <button type="button" id="btn-phone-run" class="btn btn-primary" data-i18n="phoneCheckBtn">فحص الرقم</button>
         </div>
+        <p id="phone-preview" class="phone-preview" aria-live="polite"></p>
         <div id="phone-result" class="phone-result hidden"></div>
         <div class="btn-row">
           <button type="button" class="btn btn-primary btn-back-home" data-i18n="btnBack">العودة</button>
@@ -583,6 +584,7 @@
           <p id="cl-drophint" class="privacy-note"></p>
           <input type="file" id="cl-file" class="sr-only" tabindex="-1" multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp,.txt,.md,.csv,.eml,.log,.json,text/plain" />
           <div class="btn-row">
+            <label id="cl-intel-wrap" class="cl-deep hidden"><input type="checkbox" id="cl-intel" /> <span id="cl-intel-label"></span></label>
             <label id="cl-deep-wrap" class="cl-deep hidden"><input type="checkbox" id="cl-deep" /> <span id="cl-deep-label"></span></label>
             <button type="button" id="cl-analyze" class="btn btn-primary"></button>
             <label for="cl-file" id="cl-add" class="btn btn-secondary btn-label" role="button" tabindex="0"></label>

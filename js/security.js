@@ -51,6 +51,9 @@ export function sanitizeText(input, maxLen = 50000) {
 /** Normalize phone-ish input (digits + leading +) */
 export function normalizePhoneInput(raw) {
   let s = String(raw ?? "").trim();
+  // Arabic-Indic (٠-٩), Persian (۰-۹) and full-width (０-９) digits → ASCII, so people typing on an Arabic keyboard are understood.
+  s = s.replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660)).replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06f0)).replace(/[\uFF10-\uFF19]/g, (d) => String(d.charCodeAt(0) - 0xff10));
+  s = s.replace(/\(\s*0\s*\)/g, ""); // "+963 (0) 944…" — the (0) is the local trunk prefix, not part of the number
   s = s.replace(/[^\d+]/g, "");
   if (s.indexOf("+") > 0) s = s.replace(/\+/g, "");
   if ((s.match(/\+/g) || []).length > 1) s = s.replace(/\+/g, "");

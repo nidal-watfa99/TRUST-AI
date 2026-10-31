@@ -193,11 +193,20 @@ const FA_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
 /** Normalise any typed number to digits with an optional leading "+" (handles 00 prefix and Arabic digits). */
 export function normalizeIntl(raw) {
   let s = String(raw ?? "").trim();
-  s = s.replace(/[٠-٩]/g, (d) => String(AR_DIGITS.indexOf(d))).replace(/[۰-۹]/g, (d) => String(FA_DIGITS.indexOf(d)));
-  const plus = /^\s*\+/.test(s);
+  s = s.replace(/[٠-٩]/g, (d) => String(AR_DIGITS.indexOf(d))).replace(/[۰-۹]/g, (d) => String(FA_DIGITS.indexOf(d))).replace(/[\uFF10-\uFF19]/g, (d) => String(d.charCodeAt(0) - 0xff10));
+  s = s.replace(/\(\s*0\s*\)/g, ""); // "+963 (0) 944…"
+  s = s.replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g, "");
+  // RTL display often moves the "+" to the end ("963944123456+"): treat a trailing + as a leading one.
+  const plus = /^\s*\+/.test(s) || /\+\s*$/.test(s);
   s = s.replace(/[^\d]/g, "");
-  if (!plus && s.startsWith("00")) return { digits: s.slice(2), explicitIntl: true };
-  return { digits: s, explicitIntl: plus };
+  let intl = plus;
+  if (!plus && s.startsWith("00")) { s = s.slice(2); intl = true; }
+  // "+963 0944…": a 0 right after the country code is the national trunk prefix — drop it (Italy/San Marino/Vatican keep it).
+  if (intl) {
+    const cc = findCountry(s);
+    if (cc && !["39", "378", "379"].includes(cc.code) && cc.national.startsWith("0")) s = cc.code + cc.national.replace(/^0+/, "");
+  }
+  return { digits: s, explicitIntl: intl };
 }
 
 function findCountry(digits) {
@@ -296,7 +305,7 @@ export function profileNumber(raw, opts = {}) {
 
   const types = typeIds.map((id) => ({ id, ...TYPOLOGIES[id] }));
   const e164 = "+" + digits.replace(/^0+/, (m) => (explicitIntl ? "" : m));
-  const display = explicitIntl || !digits.startsWith("0") ? "+" + digits : raw.toString().trim();
+  const display = explicitIntl || !digits.startsWith("0") ? "+" + digits : digits; // always ASCII digits (never the typed Arabic/odd characters)
   const q = encodeURIComponent(`"${display}" scam`);
 
   return {

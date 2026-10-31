@@ -57,7 +57,7 @@ import {
   getStats,
   getMeta,
 } from "./fraud-db.js";
-import { checkPhone } from "./phone-check.js";
+import { checkPhone, previewPhone } from "./phone-check.js";
 import { renderPhoneDossier, renderScamNumberCards } from "./phone-ui.js";
 import { searchScamNumbers, listScamNumberCards } from "./scam-numbers.js";
 import { getQuestnetDossier } from "./questnet.js";
@@ -127,6 +127,7 @@ function bindEvents() {
   $("#fraud-search")?.addEventListener("input", onFraudSearch);
   $("#me-search")?.addEventListener("input", onMeSearch);
   $("#btn-phone-run")?.addEventListener("click", onPhoneRun);
+  $("#phone-input")?.addEventListener("input", updatePhonePreview);
   $("#phone-input")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); onPhoneRun(); }
   });
@@ -1710,6 +1711,27 @@ function openPhoneCheck() {
     r.innerHTML = "";
   }
   applyTranslations();
+  updatePhonePreview();
+}
+
+/** Live line under the field: shows exactly how the typed number is understood (digits, country, local vs international). */
+function updatePhonePreview() {
+  const el = $("#phone-preview");
+  if (!el) return;
+  const ar = getLang() === "ar";
+  const p = previewPhone($("#phone-input")?.value || "");
+  if (!p) { el.textContent = ""; return; }
+  const where = p.country ? (ar ? p.country.name_ar : p.country.name_en) : "";
+  const note = p.local ? (ar ? "رقم محلي — يُعامل كرقم سوري. أضف رمز الدولة لرقم أجنبي." : "Local format — treated as a Syrian number. Add the country code for a foreign number.") : (where ? where : (ar ? "رمز الدولة غير معروف" : "Unknown country code"));
+  el.innerHTML = `${ar ? "سيُفحص كـ" : "Will be checked as"}: <strong dir="ltr">${escapeHtml(p.display)}</strong> — ${escapeHtml(note)}`;
+}
+
+function phoneActions(display) {
+  const ar = getLang() === "ar";
+  return `<div class="phone-actions">
+    <button type="button" class="btn btn-secondary" id="btn-phone-copy">${ar ? "نسخ الرقم" : "Copy number"}</button>
+    <button type="button" class="btn btn-secondary" id="btn-phone-report">${ar ? "أبلغ عن هذا الرقم" : "Report this number"}</button>
+  </div>`;
 }
 
 function onPhoneRun() {
@@ -1720,7 +1742,11 @@ function onPhoneRun() {
   el.classList.remove("hidden");
   const lang = getLang();
   if (res.ok && res.profile) {
-    el.innerHTML = renderPhoneDossier(res.profile, lang);
+    el.innerHTML = renderPhoneDossier(res.profile, lang) + phoneActions(res.profile.display);
+    el.querySelector("#btn-phone-copy")?.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(res.profile.display); showToast(lang === "ar" ? "تم نسخ الرقم" : "Number copied"); } catch (_) { showToast(lang === "ar" ? "تعذّر النسخ" : "Could not copy", true); }
+    });
+    el.querySelector("#btn-phone-report")?.addEventListener("click", () => { openReport(); const f = $("#report-phone"); if (f) f.value = res.profile.display; });
     try {
       const p = res.profile;
       saveToHistory("📞 " + p.display + (p.country ? " · " + (lang === "ar" ? p.country.name_ar : p.country.name_en) : ""), {

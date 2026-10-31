@@ -11,7 +11,7 @@ import {
   securityLog,
 } from "./security.js";
 import { getStats } from "./fraud-db.js";
-import { profileNumber } from "./scam-numbers.js";
+import { profileNumber, normalizeIntl } from "./scam-numbers.js";
 import { storageGetJSON } from "./security.js";
 
 /** Common country calling codes (subset relevant to MENA + global) */
@@ -197,6 +197,17 @@ export function checkPhone(rawInput) {
     disclaimer_ar: "النتيجة تقديرية بناءً على أنماط عامة وبيانات محلية. ليست حكماً قطعياً.",
     disclaimer_en: "Result is an estimate based on general patterns and local data. Not a definitive judgment.",
   };
+}
+
+/** What the checker understood from what is typed so far (for the live preview under the field). */
+export function previewPhone(raw) {
+  const { digits, explicitIntl } = normalizeIntl(raw);
+  if (digits.length < 3) return null;
+  const local = !explicitIntl && digits.startsWith("0");
+  const country = local ? null : detectCountry("+" + digits);
+  const group = (d) => d.replace(/(\d{3})(?=\d)/g, "$1 ");
+  const display = country ? `+${country.code} ${group(country.national)}` : local ? group(digits) : "+" + group(digits);
+  return { digits, local, display, country: country ? { code: country.code, name_ar: country.name_ar, name_en: country.name_en } : null };
 }
 
 export function getSupportedCountries() {

@@ -6,7 +6,8 @@
  */
 import { buildDossier, mergeAI, normalizeUniversal, dossierToText, KINDS } from "./client-engine.js";
 import { scanImageFile, forensicsFacts } from "./image-forensics.js";
-import { analyzeUniversal, isAIAvailable, isVisionAvailable, getAIStatus, verifyNewsWithAI, searchFactChecks } from "./ai-provider.js";
+import { buildLocalIntel } from "./threat-intel.js";
+import { lookupLiveIntel, analyzeUniversal, isAIAvailable, isVisionAvailable, getAIStatus, verifyNewsWithAI, searchFactChecks } from "./ai-provider.js";
 import { normalizeNewsVerdict, wantsNewsVerdict } from "./news-verdict.js";
 import { detectSensitivePaste } from "./risk-engine.js";
 import { renderSourceReport } from "./source-report.js";
@@ -115,6 +116,13 @@ function renderStatic() {
   set("#cl-sub", u.subtitle);
   set("#cl-analyze", u.analyze);
   set("#cl-deep-label", getLang() === "ar" ? "تحقق معمّق للأخبار: 3 جولات بحث (أبطأ ويستهلك حصة Gemini أكثر)" : "Deep news check: 3 search rounds (slower, uses more Gemini quota)");
+  set("#cl-intel-label", getLang() === "ar" ? "استخبارات حيّة عن الروابط والأرقام (بحث Google عبر مفتاح Gemini — يرسل النطاق/الرقم فقط)" : "Live intel on links & numbers (Google Search via your Gemini key — sends only the domain/number)");
+  const intelWrap = $("#cl-intel-wrap");
+  if (intelWrap) {
+    intelWrap.classList.toggle("hidden", getAIStatus().provider !== "gemini");
+    const ib = $("#cl-intel");
+    try { if (ib && !ib.dataset.bound) { ib.checked = localStorage.getItem("trustai_intel") === "1"; ib.addEventListener("change", () => { try { ib.checked ? localStorage.setItem("trustai_intel", "1") : localStorage.removeItem("trustai_intel"); } catch (_) {} }); ib.dataset.bound = "1"; } } catch (_) {}
+  }
   const deepWrap = $("#cl-deep-wrap");
   if (deepWrap) {
     deepWrap.classList.toggle("hidden", getAIStatus().provider !== "gemini");
@@ -221,7 +229,7 @@ function renderTray() {
 function clearAll() {
   $("#cl-text").value = "";
   state.images = [];
-  state.dossier = null; state.ai = null; state.aiError = null; state.input = null; state.news = null;
+  state.dossier = null; state.ai = null; state.aiError = null; state.input = null; state.news = null; state.intel = null;
   $("#cl-out").innerHTML = "";
   $("#cl-progress")?.classList.add("hidden");
   watchSensitive();
@@ -259,6 +267,9 @@ async function run() {
     const d = buildDossier({ text, images: state.input.images.length, lang: getLang(), forcedKind: state.kind, visionOn: vision, aiOn: isAIAvailable() });
     state.dossier = d;
     state.news = wantsNewsVerdict(d) ? { status: isAIAvailable() ? "pending" : "off" } : null;
+    const asStr = (x) => (typeof x === "string" ? x : (x && (x.url || x.value || x.raw || x.text)) || "");
+    const li = buildLocalIntel({ urls: (d.entities?.urls || []).map(asStr), phones: (d.entities?.phones || []).map(asStr), lang: getLang() });
+    state.intel = { local: li.items, lines: li.promptLines, targets: li.targets, live: null };
     render(d, { aiPending: isAIAvailable() });
     $("#cl-out").scrollIntoView({ behavior: "smooth", block: "start" });
 
@@ -266,7 +277,15 @@ async function run() {
 
     if (isAIAvailable()) {
       setProgress(1);
+      if ($("#cl-intel")?.checked && getAIStatus().provider === "gemini" && state.intel.targets.length) {
+        state.intel.live = { status: "pending" };
+        render(d, { aiPending: true });
+        const lv = await lookupLiveIntel({ targets: state.intel.targets, lang: getLang() });
+        state.intel.live = { status: "done", ...lv };
+      }
       const res = await analyzeUniversal({
+        intelLines: state.intel.lines, liveNotes: state.intel.live?.notes || "",
+
         text, images: state.input.images, kind: d.kind, lang: getLang(),
         engineSummary: { score: d.score, type: d.event.type, signals: d.warnings.filter((w) => w.level !== "info").map((w) => w.key) },
       });
@@ -376,6 +395,7 @@ function render(d, { aiPending = false } = {}) {
 
   /* 3. AI */
   html.push(aiSection(d, aiPending));
+  html.push(intelSection());
 
   /* 4. Warnings */
   html.push(`
@@ -478,6 +498,25 @@ function render(d, { aiPending = false } = {}) {
   $("#cl-print")?.addEventListener("click", () => window.print());
   $("#cl-tomain")?.addEventListener("click", () => document.dispatchEvent(new CustomEvent("trustai:client-to-main", { detail: { text: d.raw } })));
   $("#cl-again")?.addEventListener("click", () => { clearAll(); $("#cl-scroll")?.scrollTo({ top: 0, behavior: "smooth" }); });
+}
+
+function intelSection() {
+  const it = state.intel;
+  if (!it || (!it.local.length && !it.live)) return "";
+  const ar = getLang() === "ar";
+  const col = { high: "#ef4444", medium: "#f59e0b", low: "#94a3b8", info: "#22c55e" };
+  const lab = { high: ar ? "خطر مرتفع" : "High risk", medium: ar ? "يستدعي الحذر" : "Caution", low: ar ? "لا مؤشر بارز" : "No notable sign", info: ar ? "نطاق رسمي" : "Official domain" };
+  const rows = it.local.map((i) => `<li class="in-row" style="--c:${col[i.risk] || "#94a3b8"}"><i></i><div><strong dir="ltr">${esc(i.target)}</strong> <span class="in-tag">${esc(lab[i.risk] || "")}</span>${i.notes.length ? `<ul class="in-notes">${i.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}</div></li>`).join("");
+  const lv = it.live;
+  let live = "";
+  if (lv && lv.status === "pending") live = `<p class="cl-p"><span class="spinner inline" aria-hidden="true"></span> ${esc(ar ? "جارٍ البحث عن بلاغات وشكاوى عن هذه الروابط والأرقام…" : "Searching public reports and complaints about these links and numbers…")}</p>`;
+  else if (lv && lv.status === "done") {
+    const chip = (l) => (isSafeUrl(l.url) ? `<a class="nv-src" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.title || "source")} ↗</a>` : "");
+    if (lv.ok) live = `<h4 class="cl-h4">${esc(ar ? "بحث حيّ عن بلاغات علنية" : "Live search for public reports")}</h4>${lv.sources.length ? `<p class="nv-srcs">${lv.sources.slice(0, 8).map(chip).join(" ")}</p>` : ""}${lv.queries.length ? `<details class="nv-queries"><summary>🔎 ${esc(ar ? "ما الذي بحثنا عنه" : "What we searched")} (${lv.queries.length})</summary><ul>${lv.queries.map((q) => `<li dir="auto">${esc(q)}</li>`).join("")}</ul></details>` : ""}<details class="nv-others"><summary>${esc(ar ? "ملخص ما وُجد" : "Summary of findings")}</summary><p class="cl-p" style="white-space:pre-wrap">${esc(lv.notes)}</p></details><p class="muted nv-fxnote">${esc(ar ? "غياب البلاغات لا يعني أن الرابط أو الرقم آمن. تحقّق دائمًا عبر القناة الرسمية." : "No reports does not mean a link or number is safe. Always verify through the official channel.")}</p>`;
+    else if (lv.skipped) live = "";
+    else live = `<p class="cl-note-warn">${esc(lv.unavailable ? (ar ? "البحث الحي غير متاح لهذا المفتاح/النموذج." : "Live search is not available for this key/model.") : (ar ? "تعذّر البحث الحي الآن (ازدحام أو حد استخدام). التحليل المحلي أعلاه ما زال صالحًا." : "Live search failed for now (overload or quota). The local analysis above still stands."))}</p>`;
+  }
+  return `<section class="cl-card" aria-labelledby="cl-h-intel"><h3 id="cl-h-intel" class="cl-h">${esc(ar ? "استخبارات الروابط والأرقام" : "Link & number intelligence")}</h3><ul class="in-list">${rows}</ul>${live}</section>`;
 }
 
 function aiSection(d, pending) {

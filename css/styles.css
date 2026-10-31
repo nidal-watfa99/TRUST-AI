@@ -2134,3 +2134,27 @@ html.elderly .header-actions { gap: 0.45rem; }
 
 .cl-deep{display:flex;align-items:center;gap:.5rem;font-size:.85rem;flex:1 1 100%;margin-bottom:.4rem;line-height:1.5}
 .cl-deep.hidden{display:none}
+
+/* ── Text inputs (phone, fraud search, report form): readable in BOTH themes ─────────── */
+:root,[data-theme="dark"]{color-scheme:dark}
+[data-theme="light"]{color-scheme:light}
+.text-input{
+  width:100%;min-height:46px;box-sizing:border-box;
+  background:var(--bg-elevated);color:var(--text);-webkit-text-fill-color:var(--text);caret-color:var(--primary,#22d3ee);
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:.7rem .85rem;font-family:inherit;font-size:1rem;line-height:1.4;
+}
+.text-input::placeholder{color:var(--text-dim);-webkit-text-fill-color:var(--text-dim);opacity:1}
+.text-input:focus{outline:none;border-color:var(--border-focus);box-shadow:0 0 0 3px var(--primary-bg)}
+.text-input:-webkit-autofill{-webkit-text-fill-color:var(--text);box-shadow:0 0 0 1000px var(--bg-elevated) inset}
+input[type="tel"].text-input{direction:ltr;text-align:start;letter-spacing:.03em;font-variant-numeric:tabular-nums}
+textarea.text-input{min-height:96px;resize:vertical}
+.phone-preview{min-height:1.4rem;margin:.1rem 0 .6rem;font-size:.9rem;color:var(--text-muted);direction:auto}
+.phone-preview strong{color:var(--text);direction:ltr;unicode-bidi:isolate}
+.phone-actions{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.8rem}
+
+.in-list{list-style:none;margin:.3rem 0;padding:0}
+.in-row{display:flex;gap:.6rem;align-items:flex-start;padding:.5rem 0;border-bottom:1px solid rgba(148,163,184,.15)}
+.in-row>i{flex:0 0 .7rem;height:.7rem;border-radius:50%;background:var(--c);margin-top:.45rem}
+.in-tag{font-size:.75rem;color:var(--c);border:1px solid var(--c);border-radius:999px;padding:.05rem .5rem;margin-inline-start:.3rem}
+.in-notes{margin:.25rem 0 0;padding-inline-start:1.1rem;font-size:.88rem;color:var(--text-muted)}
