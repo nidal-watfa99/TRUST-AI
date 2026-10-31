@@ -12,7 +12,7 @@
 
 <br/>
 
-![Version](https://img.shields.io/badge/version-3.3.0-22d3ee?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-3.4.0-22d3ee?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge)
 ![Dependencies](https://img.shields.io/badge/dependencies-0-8b5cf6?style=for-the-badge)
 ![Build](https://img.shields.io/badge/build%20step-none-f97316?style=for-the-badge)
@@ -51,6 +51,14 @@
 - **حكم الأخبار «صادق / كاذب»** بالأدلة: بحث Gemini الحيّ + سجلات ClaimReview، ويُخفَّض الحكم إلى «غير مثبت» عند غياب الدليل.
 - **أرقام مشبوهة من الخارج:** قاعدة أنماط ونطاقات موثّقة (لا أرقام أشخاص) + ملف متصل + خطوات الإنقاذ، وتظهر في بحث قاعدة الاحتيال وفي السجل.
 - بعد النشر: ضع الرابط المطلق في وسوم `og:image` لتظهر صورة المشاركة في واتساب/تيليغرام.
+
+---
+
+## 🆕 v3.4 — التحقق المعمّق للأخبار (اختياري)
+
+- مربع «تحقق معمّق للأخبار» يظهر عند استعمال مفتاح Gemini: **3 جولات بحث حي** — (1) جمع الأدلة وتتبّع الأصل، (2) محاولة صريحة **لنقض** النتيجة بالبحث عن تفنيدات وتصحيحات وأقدم ظهور، (3) مقارنة وكتابة التقرير بالأدلة المسترجعة في كل الجولات.
+- تُدمج صفحات كل الجولات وعمليات بحثها في تقرير واحد، ويُربط كل دليل بصفحة استُرجعت فعلًا. ملاحظات الجولات السابقة تُعامل كبيانات غير موثوقة (قد تحمل تعليمات خبيثة من صفحات الويب) فلا تُنفَّذ.
+- **التكلفة:** يستهلك ثلاثة أضعاف حصة Gemini وأبطأ. إن رُفضت أداة البحث لمفتاحك يعلن التطبيق ذلك ولا يتظاهر بالتعمق.
 
 ---
 
@@ -301,7 +309,7 @@ TRUST-AI/
 - 14 طبقة حماية (انظر الجدول أعلاه) + وحدة `security.js` v3 + `guard.js` + `shield-ui.js`
 - CSP أشد: `script-src-attr 'none'` و`form-action 'none'`؛ إزالة وسوم `<meta>` غير الفعّالة
 - مفتاح Gemini انتقل من الرابط إلى ترويسة `x-goog-api-key`
-- Service Worker بقائمة بيضاء، والكاش `trust-ai-v3.3.0`
+- Service Worker بقائمة بيضاء، والكاش `trust-ai-v3.4.0`
 - تحقق صارم من تخزين السجل والعدّاد والبلاغات وقاعدة الاحتيال
 - ملفات جديدة: `_headers`، `LICENSE`، `.well-known/security.txt`، `CODEOWNERS`، `dependabot.yml`، `security.yml`، `audit.mjs`، `security.test.js`
 - `deploy.yml` يشغّل الاختبارات أولاً وينشر الملفات التشغيلية فقط

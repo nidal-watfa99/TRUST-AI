@@ -145,7 +145,7 @@ export function normalizeNewsVerdict(raw, ctx = {}) {
   const cr = raw.credibility && typeof raw.credibility === "object" ? raw.credibility : null;
   return {
     verdict, confidence, basis, notes,
-    grounded: !!ctx.grounded, searchUnavailable: !!ctx.searchUnavailable, provider: ctx.provider || null, model: ctx.model || null,
+    grounded: !!ctx.grounded, deep: !!ctx.deep, searchUnavailable: !!ctx.searchUnavailable, provider: ctx.provider || null, model: ctx.model || null,
     headline: str(raw.headline, 220),
     explanation: str(raw.explanation, 3000),
     explanationLinks: explLinks.slice(0, 6),

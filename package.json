@@ -1,6 +1,6 @@
 {
   "name": "trust-ai",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "private": true,
   "type": "module",
   "description": "TRUST AI — verify before you trust. Static front-end, no build step, zero dependencies.",

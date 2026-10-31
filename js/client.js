@@ -114,6 +114,13 @@ function renderStatic() {
   set("#cl-title", u.title);
   set("#cl-sub", u.subtitle);
   set("#cl-analyze", u.analyze);
+  set("#cl-deep-label", getLang() === "ar" ? "تحقق معمّق للأخبار: 3 جولات بحث (أبطأ ويستهلك حصة Gemini أكثر)" : "Deep news check: 3 search rounds (slower, uses more Gemini quota)");
+  const deepWrap = $("#cl-deep-wrap");
+  if (deepWrap) {
+    deepWrap.classList.toggle("hidden", getAIStatus().provider !== "gemini");
+    const cb = $("#cl-deep");
+    try { if (cb && !cb.dataset.bound) { cb.checked = localStorage.getItem("trustai_deep") === "1"; cb.addEventListener("change", () => { try { cb.checked ? localStorage.setItem("trustai_deep", "1") : localStorage.removeItem("trustai_deep"); } catch (_) {} }); cb.dataset.bound = "1"; } } catch (_) {}
+  }
   set("#cl-add", u.addFiles);
   set("#cl-example", u.example);
   set("#cl-clear", u.clear);
@@ -290,9 +297,11 @@ async function runNewsVerdict(text) {
   try {
     const factChecks = await searchFactChecks(text, lang);
     const imageFacts = forensicsFacts(state.images.map((im) => im.forensics));
-    const res = await verifyNewsWithAI({ text, images: state.input?.images || [], lang, factChecks, imageFacts, today: new Date().toISOString().slice(0, 10) });
+    const deep = !!$("#cl-deep")?.checked && getAIStatus().provider === "gemini";
+    const steps = lang === "ar" ? ["", "الجولة 1/3: جمع الأدلة والمصادر…", "الجولة 2/3: البحث عمّا ينقض النتيجة…", "الجولة 3/3: المقارنة وكتابة التقرير…"] : ["", "Round 1/3: gathering evidence and sources…", "Round 2/3: trying to disprove the result…", "Round 3/3: cross-checking and writing the report…"];
+    const res = await verifyNewsWithAI({ text, images: state.input?.images || [], lang, factChecks, imageFacts, deep, onProgress: (n) => { const el = document.getElementById("nv-step"); if (el) el.textContent = steps[n] || ""; }, today: new Date().toISOString().slice(0, 10) });
     if (res?.raw) {
-      const data = normalizeNewsVerdict(res.raw, { sources: res.sources, chunks: res.chunks, supports: res.supports, queries: res.queries, factChecks, grounded: res.grounded, searchUnavailable: res.searchUnavailable, provider: res.provider, model: res.model });
+      const data = normalizeNewsVerdict(res.raw, { sources: res.sources, chunks: res.chunks, supports: res.supports, queries: res.queries, factChecks, grounded: res.grounded, deep: res.deep, searchUnavailable: res.searchUnavailable, provider: res.provider, model: res.model });
       state.news = data ? { status: "done", data } : { status: "error", error: lang === "ar" ? "تعذّر فهم نتيجة التحقق." : "Could not read the verification result." };
     } else state.news = { status: "error", error: res?.error || (lang === "ar" ? "تعذّر التحقق." : "Verification failed.") };
   } catch (e) {
@@ -700,7 +709,7 @@ function newsVerdictSection(n, d) {
     return `<section class="cl-card nv-card nv-off" aria-labelledby="nv-h"><h3 id="nv-h" class="cl-h">📰 ${esc(s.offTitle)}</h3><p class="cl-p">${esc(s.offBody)}</p><button type="button" class="btn btn-primary" id="nv-open-models">${esc(s.connect)}</button></section>`;
   }
   if (n.status === "pending") {
-    return `<section class="cl-card nv-card" aria-labelledby="nv-h"><h3 id="nv-h" class="cl-h">📰 ${esc(s.title)}</h3><p class="cl-p"><span class="spinner inline" aria-hidden="true"></span> ${esc(s.pending)}</p></section>`;
+    return `<section class="cl-card nv-card" aria-labelledby="nv-h"><h3 id="nv-h" class="cl-h">📰 ${esc(s.title)}</h3><p class="cl-p"><span class="spinner inline" aria-hidden="true"></span> <span id="nv-step">${esc(s.pending)}</span></p></section>`;
   }
   if (n.status === "error") {
     return `<section class="cl-card nv-card nv-err"><h3 class="cl-h">📰 ${esc(s.title)}</h3><p class="error-text">${esc(n.error || "")}</p><button type="button" class="btn btn-secondary" id="nv-retry">${esc(s.retry)}</button></section>`;
@@ -717,7 +726,7 @@ function newsVerdictSection(n, d) {
   const safe = (u) => (isSafeUrl(u) ? u : "");
   const chip = (l) => (safe(l.url) ? `<a class="nv-src" href="${esc(safe(l.url))}" target="_blank" rel="noopener noreferrer">${esc(l.title || "source")} ↗</a>` : "");
   const manip = v.manipulation && v.manipulation !== "unknown" ? `<p class="nv-manip"><strong>${esc(s.manipTitle)}:</strong> <span class="nv-chip" style="background:${v.manipulation === "none" ? "#22c55e" : "#f97316"}">${esc(s.manip[v.manipulation] || "")}</span>${v.firstSeen ? ` <span class="muted">· ${esc(s.firstSeen)}: ${esc(v.firstSeen)}</span>` : ""}</p>` : (v.firstSeen ? `<p class="nv-manip"><strong>${esc(s.firstSeen)}:</strong> ${esc(v.firstSeen)}</p>` : "");
-  const queriesHtml = v.queries && v.queries.length ? `<details class="nv-queries"><summary>🔎 ${esc(s.queries)} (${v.queries.length})</summary><ul>${v.queries.map((q) => `<li dir="auto">${esc(q)}</li>`).join("")}</ul></details>` : "";
+  const queriesHtml = v.queries && v.queries.length ? `<details class="nv-queries"><summary>🔎 ${esc(s.queries)} (${v.queries.length})${v.deep ? " · " + esc(getLang() === "ar" ? "تحقق معمّق: 3 جولات" : "deep check: 3 rounds") : ""}</summary><ul>${v.queries.map((q) => `<li dir="auto">${esc(q)}</li>`).join("")}</ul></details>` : "";
   const searchOff = v.searchUnavailable ? `<p class="cl-note-warn">${esc(s.searchOff)}</p>` : "";
   const explSrc = v.explanationLinks && v.explanationLinks.length ? `<p class="nv-srcs"><strong>${esc(s.explSrc)}:</strong> ${v.explanationLinks.map(chip).join(" ")}</p>` : "";
   const othersHtml = v.others && v.others.length ? `<details class="nv-others"><summary>${esc(s.others)} (${v.others.length})</summary><p class="nv-srcs">${v.others.map(chip).join(" ")}</p></details>` : "";
