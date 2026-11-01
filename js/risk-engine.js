@@ -9,6 +9,7 @@
  * and strong pyramid / network marketing detection.
  */
 import { analyzeDomain } from "./domain-intel.js";
+import { lookupKnownScam } from "./known-scams.js";
 
 
 export const WEIGHTS = {
@@ -19,6 +20,7 @@ export const WEIGHTS = {
   link: 15,
   unrealistic: 5,
   socialEngineering: 5,
+  lure: 40, // reward / spin-to-earn / fake-winnings / referral schemes: the main lure of this scam family
 };
 
 export const LEVELS = {
@@ -169,6 +171,31 @@ const UNREALISTIC_PATTERNS = [
   /(?:QuestNet|QNET|كويست\s*نت|كيونت|QI\s*Group|GoldQuest)/i,
 ];
 
+
+/* Reward / casino-style / spin-to-earn / referral lures — the family of scams that shows a FAKE balance, promises
+ * withdrawals, and makes you recruit friends. Before v3.6 these had almost no weight (the whole "unrealistic" category
+ * was capped at 5 points), so such pages scored "low". Each pattern below is a documented hallmark of that family. */
+const LURE_PATTERNS = [
+  // English
+  /\b(?:free\s*)?spins?\s*(?:left|remaining|renew)|\bspin\s*(?:to\s*win|the\s*wheel)|\blucky\s*(?:spin|wheel)|\bjackpot\b/i,
+  /\bwithdraw(?:\s*your)?\s*(?:winnings?|earnings?|bonus)\b/i,
+  /\b(?:total\s*won|winnings?\s*available|you\s*(?:got|won|have\s*won)\s*[$€£]?\s*\d)/i,
+  /\b(?:sign[\s-]?up|welcome|referral)\s*bonus\b/i,
+  /\b(?:signed\s*up\s*from\s*your\s*link|for\s*every\s*friend|each\s*(?:share|friend|referral)|share\s*(?:your\s*link\s*)?(?:with\s*friends\s*)?(?:and|&)\s*(?:get|earn)|get\s*\d+\s*spins?)/i,
+  /\bjust\s*withdrew\b/i,
+  /\bearn\s*(?:free\s*)?(?:crypto|bitcoin|coins?|money|cash)\s*(?:daily|online|by\s*(?:sharing|playing|spinning|inviting))/i,
+  /\bclaim\s*(?:your\s*)?(?:reward|bonus|winnings|\$?\d)/i,
+  /\b(?:withdrawal|withdraw|gas|network)\s*fee\b.{0,40}(?:required|to\s*(?:unlock|release|withdraw))/i,
+  // Arabic
+  /(?:دورات?|لفّات?|لفات?|لفة)\s*مجانية|عجلة\s*الحظ|(?:جرّب|جرب|لتجربة)\s*حظك/,
+  /(?:اسحب|سحب)\s*(?:أرباحك|ارباحك|مكاسبك|جوائزك)/,
+  /مكافأة\s*(?:مقابل|عن|على)\s*كل\s*(?:صديق|شخص|إحالة|مشاركة)/,
+  /شارك\s*(?:رابطك|الرابط).{0,50}(?:واحصل|واكسب)/,
+  /(?:اربح|اكسب)\s*(?:عملات|بيتكوين|دولار|أموال|مالاً).{0,40}(?:بمجرد|بالمشاركة|بالدعوة|يومياً|يوميا|من\s*المنزل)/,
+  /جائزة.{0,40}(?:مليون|ملايين)\s*دولار|(?:مليون|ملايين)\s*دولار.{0,30}(?:متاحة|جائزة)/,
+  /(?:رسوم|عمولة)\s*(?:السحب|الشبكة|التحويل).{0,40}(?:مطلوبة|لفتح|لتحرير|لسحب)/,
+];
+
 const SOCIAL_ENGINEERING_PATTERNS = [
   /لا\s*(?:تخبر|تُخبر|تبلغ)\s*(?:أحد|أحداً|أي\s*شخص)/i,
   /(?:سري|سرية)\s*(?:جداً|تامة)/i,
@@ -249,6 +276,7 @@ function analyzeSingleLink(url) {
   let score = 0;
   let host = "";
   let path = "";
+  let query = "";
   let isShortener = false;
   let isBrandSpoof = false;
   try {
@@ -256,6 +284,7 @@ function analyzeSingleLink(url) {
     const u = new URL(normalized);
     host = u.hostname.toLowerCase().replace(/^www\./, "");
     path = u.pathname + u.search;
+    query = u.search;
   } catch {
     indicators.push({ code: "invalid_url", weight: 10 });
     return { score: 10, indicators, host: url, path: "", url, isShortener: false, isBrandSpoof: false, flags: ["invalid_url"] };
@@ -293,6 +322,33 @@ function analyzeSingleLink(url) {
     flags.push(code + ":" + f.brand);
   }
 
+  // Documented scam domain (built-in evidence list, public feed, or the person's own reports).
+  const known = lookupKnownScam(host);
+  if (known) {
+    indicators.push({ code: "known_scam", weight: 40, kind: "known_scam", detail: known.origin });
+    score += 40;
+    flags.push("known_scam");
+  }
+
+  // A link that carries YOUR email address is a personalised bulk-mailing lure (the sender harvested your address).
+  let emailInUrl = false;
+  try {
+    for (const [, v] of new URLSearchParams(query)) { if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(decodeURIComponent(v))) { emailInUrl = true; break; } }
+  } catch (_) { emailInUrl = /(?:%40|@)[a-z0-9.-]+\.[a-z]{2,}/i.test(query); }
+  if (emailInUrl) {
+    indicators.push({ code: "email_in_url", weight: 8 });
+    score += 8;
+    flags.push("email_in_url");
+  }
+
+  // Gambling / spin-to-earn / faucet / airdrop wording in the domain name itself.
+  const regLabel = host.replace(/^www\./, "").split(".").slice(-2, -1)[0] || "";
+  if (!domainInfo.official && /(casino|jackpot|slotc|slots|coiner|lotto|faucet|airdrop|spin-?to-?win)/.test(regLabel)) {
+    indicators.push({ code: "gambling_keywords", weight: 6, detail: regLabel });
+    score += 6;
+    flags.push("gambling_keywords");
+  }
+
   const parts = host.split(".");
   if (parts.length > 4) {
     indicators.push({ code: "many_subdomains", weight: 4 });
@@ -324,7 +380,7 @@ function analyzeSingleLink(url) {
     flags.push("shortener");
   }
 
-  return { score, indicators, host, path, url, isShortener, isBrandSpoof, flags };
+  return { score, indicators, host, path, url, isShortener, isBrandSpoof, flags, official: !!domainInfo.official, known: known ? { origin: known.origin, domain: known.domain, type: known.type || "", sources: known.sources } : null };
 }
 
 export function scoreToLevel(score) {
@@ -385,6 +441,7 @@ export function analyze(input = {}) {
     link: 0,
     unrealistic: 0,
     socialEngineering: 0,
+    lure: 0,
   };
   const reasons = new Set();
   const indicators = [];
@@ -424,6 +481,13 @@ export function analyze(input = {}) {
     indicators.push({ category: "unrealistic", detail: unrealHits[0], severity: Math.min(10, 4 + unrealHits.length) });
   }
 
+  const lureHits = matchPatterns(fullText, LURE_PATTERNS);
+  if (lureHits.length) {
+    categories.lure = Math.min(WEIGHTS.lure, 10 + lureHits.length * 9);
+    reasons.add("lure");
+    indicators.push({ category: "lure", detail: lureHits[0], severity: Math.min(10, 4 + lureHits.length * 2) });
+  }
+
   const seHits = matchPatterns(fullText, SOCIAL_ENGINEERING_PATTERNS);
   if (seHits.length) {
     categories.socialEngineering = Math.min(WEIGHTS.socialEngineering, 3 + seHits.length * 2);
@@ -455,19 +519,30 @@ export function analyze(input = {}) {
   // points at a raw IP address is a strong signal on its own — it must not be diluted just because the message
   // text is calm. The floor is reported openly in `transparent.floor`.
   let floor = null;
+  const raise = (f) => { if (!floor || f.min > floor.min) floor = f; };
   for (const l of linkDetails) {
     for (const ind of l.indicators) {
       if (!ind.kind) continue;
-      const min = ind.kind === "typo" ? 30 : 55;
-      if (!floor || min > floor.min) floor = { min, reason: "brand_lookalike", kind: ind.kind, brand: ind.detail, host: l.host };
+      if (ind.kind === "known_scam") raise({ min: 85, reason: "known_scam", kind: "known_scam", brand: ind.detail, host: l.host });
+      else raise({ min: ind.kind === "typo" ? 30 : 55, reason: "brand_lookalike", kind: ind.kind, brand: ind.detail, host: l.host });
     }
-    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(l.host || "") && (!floor || floor.min < 30)) floor = { min: 30, reason: "ip_host", kind: "ip_host", brand: "", host: l.host };
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(l.host || "")) raise({ min: 30, reason: "ip_host", kind: "ip_host", brand: "", host: l.host });
   }
+  // Three or more hallmarks of a reward/casino/referral lure are a strong signal on their own.
+  if (lureHits.length >= 3) raise({ min: 55, reason: "lure_pattern", kind: "lure", brand: String(lureHits.length), host: "" });
   if (floor && score < floor.min) score = floor.min;
   else if (floor) floor.applied = false;
   if (floor && floor.applied === undefined) floor.applied = true;
 
-  const levelObj = scoreToLevel(score);
+  // A link nobody here knows must NEVER look like a green light. When the input is essentially just link(s) and the
+  // local rules found nothing, the honest verdict is "unknown" (reputation not checked), not "low risk".
+  const textNoUrls = fullText.replace(/https?:\/\/\S+|www\.\S+/gi, "").trim();
+  const unverifiedHosts = linkDetails.filter((l) => l.host && !l.official && !l.known && l.score < 10).map((l) => l.host);
+  const unverified = urls.length > 0 && score <= 24 && unverifiedHosts.length > 0 && textNoUrls.length < 40;
+  if (unverified) reasons.add("unverified_link");
+  if (linkDetails.some((l) => l.known)) reasons.add("known_scam");
+
+  const levelObj = unverified ? LEVELS.unknown : scoreToLevel(score);
   const level = levelObj.key;
 
   const categoryPercents = {};
@@ -487,7 +562,7 @@ export function analyze(input = {}) {
     .sort((a, b) => b.points - a.points);
 
   const actions = [];
-  if (score < 0) {
+  if (score < 0 || unverified) {
     actions.push("unknown");
   } else if (score <= 24) {
     actions.push("low");
@@ -499,7 +574,7 @@ export function analyze(input = {}) {
   }
 
   return {
-    score,
+    score: unverified ? -1 : score,
     level,
     levelColor: levelObj.color,
     categories,
@@ -516,6 +591,7 @@ export function analyze(input = {}) {
       breakdown,
       weights: { ...WEIGHTS },
       floor,
+      unverified: unverified ? unverifiedHosts : null,
     },
   };
 }

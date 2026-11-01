@@ -3,6 +3,7 @@
  * For every result: what evidence was found, WHERE it came from (local rule / AI / web lookup),
  * HOW certain it is, and — just as important — what was NOT checked.
  */
+import { lookupKnownScam } from "./known-scams.js";
 import { analyzeDomain, fetchDomainAge, isNetCheckEnabled, setNetCheckEnabled } from "./domain-intel.js";
 import { escapeHtml } from "./security.js";
 
@@ -14,11 +15,14 @@ const T = {
     notChecked: "ما لم يُفحص (حدود هذه النتيجة)",
     src: { local: "قاعدة محلية", ai: "ذكاء اصطناعي", web: "بحث خارجي", info: "ملاحظة" },
     cert: { high: "يقين مرتفع", medium: "يقين متوسط", low: "يقين منخفض" },
-    cat: { urgency: "لغة استعجال وضغط", impersonation: "انتحال جهة", money: "طلب مال أو تحويل", sensitive: "طلب بيانات حساسة", link: "إشارات في الروابط", unrealistic: "وعود غير واقعية", socialEngineering: "هندسة اجتماعية" },
+    cat: { urgency: "لغة استعجال وضغط", impersonation: "انتحال جهة", money: "طلب مال أو تحويل", sensitive: "طلب بيانات حساسة", link: "إشارات في الروابط", unrealistic: "وعود غير واقعية", socialEngineering: "هندسة اجتماعية", lure: "طُعم مكافآت وأرباح" },
     lookalike: { homoglyph: "يحاكي اسم «{b}» بحروف مموّهة", typo: "يشبه اسم «{b}» بخطأ إملائي طفيف", combo: "يضيف كلمة خادعة إلى اسم «{b}»", subdomain: "يضع اسم «{b}» في بدايته بينما النطاق الحقيقي لجهة أخرى", other_tld: "يستعمل اسم «{b}» بلاحقة مجانية كثيرة الاستغلال" },
     host: "النطاق",
     official: "النطاق «{d}» يخص «{b}» رسميًا حسب قائمة مدمجة. هذا يؤكد النطاق فقط، ولا يثبت أن الرسالة نفسها صادقة.",
     floor: "رُفعت الدرجة إلى حدّ أدنى ({n}) لأن الرابط يحاكي جهة معروفة؛ هذه الإشارة وحدها كافية للحذر حتى لو بدا النص هادئًا.",
+    knownfloor: "رُفعت الدرجة إلى حدّ أدنى ({n}) لأن النطاق مدرج في قائمة موثّقة بمصادر (أو أبلغتَ عنه) كموقع احتيال.",
+    lurefloor: "رُفعت الدرجة إلى حدّ أدنى ({n}) لأن النص يحمل عدة علامات لطُعم المكافآت (رصيد وهمي، أرباح للسحب، دورات حظ، مكافآت للإحالة).",
+    knownsrc: "المصادر: {s}",
     ipfloor: "رُفعت الدرجة إلى حدّ أدنى ({n}) لأن الرابط يشير إلى عنوان IP مباشر بدل اسم نطاق.",
     aiUsed: "حلّل نموذج ذكاء اصطناعي ({m}) المحتوى. قد يخطئ أو يبالغ في ثقته؛ لا يخفض الدرجة المحلية.",
     age_new: "النطاق «{d}» سُجّل منذ {n} يومًا فقط (حديث جدًا) — مؤشر شائع في مواقع الاحتيال.",
@@ -43,11 +47,14 @@ const T = {
     notChecked: "What was not checked (limits of this result)",
     src: { local: "Local rule", ai: "AI", web: "Web lookup", info: "Note" },
     cert: { high: "High certainty", medium: "Medium certainty", low: "Low certainty" },
-    cat: { urgency: "Urgency / pressure language", impersonation: "Impersonation", money: "Asks for money or a transfer", sensitive: "Asks for sensitive data", link: "Link signals", unrealistic: "Unrealistic promises", socialEngineering: "Social engineering" },
+    cat: { urgency: "Urgency / pressure language", impersonation: "Impersonation", money: "Asks for money or a transfer", sensitive: "Asks for sensitive data", link: "Link signals", unrealistic: "Unrealistic promises", socialEngineering: "Social engineering", lure: "Reward / earnings lure" },
     lookalike: { homoglyph: "imitates “{b}” with disguised characters", typo: "looks like “{b}” with a small typo", combo: "adds a deceptive word to “{b}”", subdomain: "starts with “{b}” while the real domain belongs to someone else", other_tld: "uses the name “{b}” on a throw-away TLD" },
     host: "Domain",
     official: "“{d}” belongs to “{b}” per a built-in list. This confirms the domain only — not that the message itself is genuine.",
     floor: "Score raised to a minimum ({n}) because a link imitates a known brand; that alone warrants caution even if the text looks calm.",
+    knownfloor: "Score raised to a minimum ({n}) because the domain is on a documented, sourced scam list (or you reported it).",
+    lurefloor: "Score raised to a minimum ({n}) because the text shows several hallmarks of a reward lure (fake balance, withdrawable winnings, lucky spins, referral rewards).",
+    knownsrc: "Sources: {s}",
     ipfloor: "Score raised to a minimum ({n}) because a link points to a raw IP address instead of a domain name.",
     aiUsed: "An AI model ({m}) analysed the content. It can be wrong or over-confident; it cannot lower the local score.",
     age_new: "“{d}” was registered only {n} days ago (very new) — a common sign of scam sites.",
@@ -86,6 +93,8 @@ export function buildTransparency({ result, hosts = [], aiAvailable = false, aiV
     for (const f of di.findings) {
       evidence.push({ text: `${s.host} «${di.host}» ${fill(s.lookalike[f.kind] || "", { b: brandName(f.brand) })}`, source: "local", certainty: f.confidence });
     }
+    const ks = lookupKnownScam(di.host);
+    if (ks) evidence.push({ text: `${s.host} «${di.host}»: ${fill(s.knownsrc, { s: ks.sources.map((x) => [x.name, x.date].filter(Boolean).join(" ") + (x.says ? " — " + x.says : "")).join("؛ ") })}`, source: "local", certainty: "high" });
     if (di.official) evidence.push({ text: fill(s.official, { d: di.registered, b: brandName(di.official) }), source: "info", certainty: "high" });
     const age = ageResults[di.registered];
     if (age && age.ok) {
@@ -97,7 +106,7 @@ export function buildTransparency({ result, hosts = [], aiAvailable = false, aiV
   }
 
   const fl = result.transparent?.floor;
-  if (fl && fl.applied !== false) evidence.push({ text: fill(fl.kind === "ip_host" ? s.ipfloor : s.floor, { n: fl.min }), source: "local", certainty: "high" });
+  if (fl && fl.applied !== false) evidence.push({ text: fill(fl.kind === "ip_host" ? s.ipfloor : fl.kind === "known_scam" ? s.knownfloor : fl.kind === "lure" ? s.lurefloor : s.floor, { n: fl.min }), source: "local", certainty: "high" });
 
   if (result.ai) evidence.push({ text: fill(s.aiUsed, { m: aiModel || result.ai.model || "AI" }), source: "ai", certainty: "medium" });
   else notChecked.push(s.nc_noai);

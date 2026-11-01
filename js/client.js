@@ -556,6 +556,7 @@ function entitiesSection(d, u) {
       if (f === "suspicious_tld") out.push(t("linkFlag_suspicious_tld"));
       if (f === "http_not_https") out.push(t("linkFlag_http_not_https"));
       if (String(f).startsWith("typosquat")) out.push(t("linkFlag_typosquat"));
+      if (f === "known_scam" || f === "gambling_keywords" || f === "email_in_url") out.push(t("linkFlag_" + f));
     });
     return [...new Set(out)];
   };

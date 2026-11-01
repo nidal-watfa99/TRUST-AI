@@ -13,6 +13,7 @@
 import { analyzeDomain } from "./domain-intel.js";
 import { analyzeLink } from "./risk-engine.js";
 import { profileNumber } from "./scam-numbers.js";
+import { lookupKnownScam } from "./known-scams.js";
 
 const clip = (s, n) => String(s ?? "").slice(0, n);
 
@@ -55,6 +56,8 @@ export function buildLocalIntel({ urls = [], phones = [], lang = "ar" } = {}) {
       const t = { homoglyph: ar ? "يحاكي اسم «{b}» بحروف مموّهة" : "imitates “{b}” with disguised characters", typo: ar ? "يشبه اسم «{b}» بخطأ إملائي" : "looks like “{b}” with a typo", combo: ar ? "يضيف كلمة خادعة إلى اسم «{b}»" : "adds a deceptive word to “{b}”", subdomain: ar ? "يضع اسم «{b}» في بدايته والنطاق الحقيقي لجهة أخرى" : "puts “{b}” first while the real domain is someone else's", other_tld: ar ? "يستخدم اسم «{b}» بلاحقة مجانية مستغَلة" : "uses “{b}” on a throw-away TLD" }[f.kind] || "";
       notes.push(t.replace("{b}", f.brand));
     }
+    const ks = lookupKnownScam(host);
+    if (ks) { risk = "high"; notes.push(ar ? `نطاق موثّق كموقع احتيال (${ks.sources.map((x) => x.name).join("، ")})` : `documented scam domain (${ks.sources.map((x) => x.name).join(", ")})`); }
     if (di.official) { risk = "info"; notes.push(ar ? `نطاق «${di.official}» الرسمي (قائمة مدمجة) — لا يثبت صدق الرسالة نفسها` : `official “${di.official}” domain (built-in list) — does not prove the message itself is genuine`); }
     if (link) {
       for (const f of link.flags || []) {

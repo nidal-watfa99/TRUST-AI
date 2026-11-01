@@ -443,6 +443,7 @@ function renderResult(r) {
           if (f === "suspicious_tld") flagLabels.push(t("linkFlag_suspicious_tld"));
           if (f === "http_not_https") flagLabels.push(t("linkFlag_http_not_https"));
           if (f.startsWith("typosquat")) flagLabels.push(t("linkFlag_typosquat"));
+          if (f === "known_scam" || f === "gambling_keywords" || f === "email_in_url") flagLabels.push(t("linkFlag_" + f));
         });
         const uniq = [...new Set(flagLabels)];
         return `<div class="link-card ${l.score >= 8 ? "link-danger" : l.score >= 4 ? "link-warn" : ""}">
