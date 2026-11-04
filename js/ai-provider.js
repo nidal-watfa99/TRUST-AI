@@ -12,6 +12,7 @@
  */
 
 import { safeTarget, intelPromptBlock } from "./threat-intel.js";
+import { APP_VERSION } from "./version.js";
 import { validateApiKey, isSafeModelName, redactSecrets, rateLimit, isSafeImageDataUrl, sanitizeText, securityLog, storageGetJSON, storageSetJSON } from "./security.js";
 
 const REQUEST_TIMEOUT_MS = 45000;
@@ -414,6 +415,7 @@ export async function activateSavedKey(provider) {
 
 /** Delete ONE provider's saved key (the person pressed delete). Other providers' keys stay. */
 export async function removeSavedKey(provider) {
+  logKeyEvent("deleted_by_you", provider);
   const entries = await krRead();
   delete entries[provider];
   await krWrite(entries);
@@ -424,6 +426,120 @@ export async function removeSavedKey(provider) {
     idbDelete();
   }
   return { ok: true };
+}
+
+/* ── Key-storage diagnostics: WHY a key might be missing, visible to the person (never contains a key) ── */
+const KEYLOG = "trustai_keylog";
+const FIRST_SEEN = "trustai_first_seen";
+
+function logKeyEvent(e, d = "") {
+  try {
+    const cur = storageGetJSON(KEYLOG, { fallback: [], maxBytes: 6000 });
+    const a = Array.isArray(cur) ? cur : [];
+    a.push({ t: new Date().toISOString().slice(0, 19) + "Z", e: String(e).slice(0, 40), d: String(d).slice(0, 60) });
+    storageSetJSON(KEYLOG, a.slice(-25), { maxBytes: 6000 });
+  } catch (_) {}
+}
+function markFirstSeen() {
+  try { if (!localStorage.getItem(FIRST_SEEN)) localStorage.setItem(FIRST_SEEN, new Date().toISOString().slice(0, 10)); } catch (_) {}
+}
+
+/** In-app browsers (Telegram/WhatsApp/Facebook/Instagram… and bare WebViews) often keep site storage separate and
+ *  short-lived: a key saved there may not exist when the app is opened in Chrome — or even there, next time. */
+export function detectInAppBrowser(ua = (typeof navigator !== "undefined" && navigator.userAgent) || "") {
+  const u = String(ua);
+  const table = [[/FBAN|FBAV|FB_IAB/i, "Facebook"], [/Instagram/i, "Instagram"], [/Telegram/i, "Telegram"], [/WhatsApp/i, "WhatsApp"], [/MicroMessenger/i, "WeChat"], [/TikTok|musical_ly|BytedanceWebview/i, "TikTok"], [/Snapchat/i, "Snapchat"], [/Twitter/i, "X/Twitter"], [/\bLine\//i, "LINE"], [/; wv\)/i, "WebView"]];
+  for (const [re, name] of table) if (re.test(u)) return { detected: true, name };
+  return { detected: false, name: "" };
+}
+
+/** Everything needed to tell "the browser wiped my storage" from "the app removed the key". Never includes a key. */
+export async function getKeyDiagnostics() {
+  markFirstSeen();
+  let lsOk = false;
+  try { localStorage.setItem("trustai_probe", "1"); lsOk = localStorage.getItem("trustai_probe") === "1"; localStorage.removeItem("trustai_probe"); } catch (_) {}
+  let persisted = null;
+  try { if (typeof navigator !== "undefined" && navigator.storage && navigator.storage.persisted) persisted = await navigator.storage.persisted(); } catch (_) {}
+  let standalone = false;
+  try { standalone = !!(typeof matchMedia === "function" && (matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches)) || (typeof navigator !== "undefined" && navigator.standalone === true); } catch (_) {}
+  const idbRec = await idbGet().catch(() => null);
+  const keyring = await krRead().catch(() => ({}));
+  const log = storageGetJSON(KEYLOG, { fallback: [], maxBytes: 6000 });
+  let firstSeen = "";
+  try { firstSeen = localStorage.getItem(FIRST_SEEN) || ""; } catch (_) {}
+  return {
+    version: APP_VERSION,
+    origin: (typeof location !== "undefined" && location.origin) || "",
+    standalone,
+    inApp: detectInAppBrowser(),
+    storage: { localStorageWorks: lsOk, persisted },
+    saved: { localStorage: !!lsRead(), indexedDB: validSaved(idbRec), keys: Object.keys(keyring).length },
+    active: state.enabled ? { provider: state.provider, model: state.model, tail: String(state.apiKey || "").slice(-4) } : null,
+    protection: await getKeyProtectionState(),
+    firstSeen,
+    log: (Array.isArray(log) ? log : []).slice(-10),
+  };
+}
+
+/* ── Encrypted backup: all saved keys in ONE text, locked with a passphrase the person chooses. If the browser ever wipes
+ *    its storage, one paste restores everything. The passphrase is never stored; without it the text is useless. ── */
+const BACKUP_RE = /^TRUSTAI-BACKUP-1\.([A-Za-z0-9+/=]+)\.([A-Za-z0-9+/=]+)\.([A-Za-z0-9+/=]+)$/;
+
+export async function exportKeyBackup(pass) {
+  if (typeof pass !== "string" || pass.length < 8) return { ok: false, reason: "short" };
+  if (!subtle()) return { ok: false, reason: "nocrypto" };
+  await seedKeyringFromActive();
+  const entries = await krRead();
+  const plain = {};
+  for (const [p, r] of Object.entries(entries)) {
+    if (r.v === 1) plain[p] = { apiKey: r.apiKey, modelId: r.modelId, customModel: r.customModel || "" };
+    else if (r.v === 2) {
+      if (!vault) return { ok: false, reason: "locked" };
+      try { plain[p] = { apiKey: await openSealed(r, vault.key), modelId: r.modelId, customModel: r.customModel || "" }; } catch (_) { return { ok: false, reason: "locked" }; }
+    }
+  }
+  const count = Object.keys(plain).length;
+  if (!count) return { ok: false, reason: "empty" };
+  const salt = globalThis.crypto.getRandomValues(new Uint8Array(16));
+  const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveVaultKey(pass, salt);
+  const body = JSON.stringify({ v: 1, created: new Date().toISOString().slice(0, 10), active: state.enabled ? state.provider : null, entries: plain });
+  const ct = await subtle().encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(body));
+  logKeyEvent("backup_exported", String(count));
+  return { ok: true, count, text: `TRUSTAI-BACKUP-1.${b64(salt)}.${b64(iv)}.${b64(new Uint8Array(ct))}` };
+}
+
+export async function importKeyBackup(text, pass) {
+  const m = BACKUP_RE.exec(String(text || "").replace(/\s+/g, ""));
+  if (!m) return { ok: false, reason: "format" };
+  if (!subtle()) return { ok: false, reason: "nocrypto" };
+  let parsed;
+  try {
+    const key = await deriveVaultKey(String(pass || ""), unb64(m[1]));
+    const pt = await subtle().decrypt({ name: "AES-GCM", iv: unb64(m[2]) }, key, unb64(m[3]));
+    parsed = JSON.parse(new TextDecoder().decode(pt));
+  } catch (_) { return { ok: false, reason: "wrong" }; }
+  const act = lsRead();
+  const sealedHere = (act && act.v === 2) || Object.values(await krRead()).some((x) => x.v === 2);
+  if (sealedHere && !vault) return { ok: false, reason: "locked" };
+  const valid = {};
+  for (const [p, e] of Object.entries((parsed && parsed.entries) || {}).slice(0, 8)) {
+    if (!(p in PROVIDERS) || !e || typeof e.apiKey !== "string" || typeof e.modelId !== "string") continue;
+    if (!validateApiKey(e.apiKey).ok || !FREE_MODELS.some((x) => x.id === e.modelId)) continue;
+    valid[p] = { apiKey: e.apiKey, modelId: e.modelId, customModel: typeof e.customModel === "string" && isSafeModelName(e.customModel) ? e.customModel : "" };
+  }
+  const providers = Object.keys(valid);
+  if (!providers.length) return { ok: false, reason: "empty" };
+  const entries = await krRead();
+  for (const p of providers) {
+    const rec = { v: 1, ...valid[p], savedAt: Date.now() };
+    entries[p] = vault ? await sealRecord(rec) : rec;
+  }
+  await krWrite(entries);
+  const want = parsed.active && valid[parsed.active] ? parsed.active : providers[0];
+  if (initAIProvider(valid[want])) await saveInternal(false);
+  logKeyEvent("backup_imported", String(providers.length));
+  return { ok: true, count: providers.length, active: want };
 }
 
 /** Persist the CURRENT connection (sync, localStorage + background IndexedDB mirror).
@@ -454,6 +570,7 @@ async function saveInternal(allowDowngrade) {
   if (lsWrite(rec) && sameRecord(lsRead(), rec)) layers.push("localStorage");
   if (await idbPut(rec) && sameRecord(await idbGet(), rec)) layers.push("indexedDB");
   if (layers.length) await krPut(state.provider, rec);
+  logKeyEvent(layers.length ? "saved" : "save_failed", layers.join("+"));
   await requestPersistentStorage();
   return { ok: layers.length > 0, layers };
 }
@@ -541,16 +658,19 @@ export async function unlockAIConfig(pass) {
  *  stays locked here (returns false) until unlockAIConfig(). Corrupted data is discarded. */
 export function restoreAIProvider() {
   const raw = (() => { try { return localStorage.getItem(SAVED_KEY); } catch (_) { return null; } })();
+  markFirstSeen();
   if (raw == null) return false;
   const saved = lsRead();
   if (!saved) {
     // Present but unusable (tampered / invalid key characters): drop it so it cannot linger.
     try { localStorage.removeItem(SAVED_KEY); } catch (_) {}
+    logKeyEvent("record_discarded", "unusable");
     return false;
   }
-  if (saved.v === 2) return false;
+  if (saved.v === 2) { logKeyEvent("start_locked"); return false; }
   const ok = initAIProvider({ apiKey: saved.apiKey, modelId: saved.modelId, customModel: saved.customModel || "" });
   if (ok) idbPut(saved); // keep the second layer in sync
+  logKeyEvent(ok ? "restored" : "restore_failed", ok ? "localStorage" : "init_refused");
   return ok;
 }
 
@@ -561,9 +681,9 @@ export async function restoreAIProviderAsync() {
   if (restoreAIProvider()) return true;
   if (lsRead()) return false; // present but locked: the older IndexedDB copy must never bypass the lock
   const rec = await idbGet();
-  if (!validSaved(rec) || rec.v === 2) return false;
+  if (!validSaved(rec) || rec.v === 2) { if (!validSaved(rec)) logKeyEvent("start_nothing_saved"); return false; }
   const ok = initAIProvider({ apiKey: rec.apiKey, modelId: rec.modelId, customModel: rec.customModel || "" });
-  if (ok) lsWrite(rec);
+  if (ok) { lsWrite(rec); logKeyEvent("recovered_from_indexeddb"); }
   return ok;
 }
 
@@ -624,6 +744,7 @@ function resetAIState() {
 /** Explicit manual disconnect — the ONLY thing that deletes the saved key. */
 export function clearAIProvider() {
   const gone = state.provider;
+  logKeyEvent("disconnected_by_you", gone || "");
   const cleanup = gone ? krRead().then((e) => { if (e[gone]) { delete e[gone]; return krWrite(e); } }).catch(() => {}) : Promise.resolve();
   resetAIState();
   vault = null;

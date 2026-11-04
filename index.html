@@ -555,6 +555,24 @@
         <ul id="mp-keyring-list" class="kr-list"></ul>
         <div id="mp-keyring-msg" class="ai-test-result hidden" role="status" aria-live="polite"></div>
       </section>
+      <section id="mp-diag" class="mp-lock" aria-labelledby="mp-diag-title">
+        <h4 id="mp-diag-title" class="sr-h4"></h4>
+        <p id="mp-diag-hint" class="mp-keyhint"></p>
+        <div class="btn-row settings-btns"><button type="button" id="btn-diag" class="btn btn-secondary"></button></div>
+        <ul id="mp-diag-list" class="diag-list"></ul>
+        <details class="nv-others" id="mp-backup">
+          <summary id="mp-backup-title"></summary>
+          <p id="mp-backup-hint" class="mp-keyhint"></p>
+          <input type="password" id="kb-pass" class="field-input" autocomplete="off" />
+          <textarea id="kb-text" class="field-input" rows="3" dir="ltr" spellcheck="false" autocomplete="off"></textarea>
+          <div class="btn-row settings-btns">
+            <button type="button" id="btn-kb-export" class="btn btn-secondary"></button>
+            <button type="button" id="btn-kb-file" class="btn btn-ghost"></button>
+            <button type="button" id="btn-kb-import" class="btn btn-primary"></button>
+          </div>
+          <div id="kb-msg" class="ai-test-result hidden" role="status" aria-live="polite"></div>
+        </details>
+      </section>
     </div>
   </div>
 

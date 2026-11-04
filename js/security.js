@@ -10,7 +10,8 @@
  * person running it. True secrets must never live here.
  */
 
-export const APP_VERSION = "3.1.0";
+import { APP_VERSION } from "./version.js";
+export { APP_VERSION };
 export const BUILD_ID = "trust-ai-v3-" + APP_VERSION;
 
 /* ───────────────────────── Output encoding (XSS) ───────────────────────── */

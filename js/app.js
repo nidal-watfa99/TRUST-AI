@@ -17,6 +17,10 @@ import {
   revertToSavedAI,
   getKeyProtectionState,
   listSavedKeys,
+  getKeyDiagnostics,
+  exportKeyBackup,
+  importKeyBackup,
+  detectInAppBrowser,
   activateSavedKey,
   removeSavedKey,
   enableKeyProtection,
@@ -198,6 +202,10 @@ function bindEvents() {
   $("#btn-clear-ai")?.addEventListener("click", onClearAI);
   $("#btn-test-ai")?.addEventListener("click", onTestAI);
   $("#mp-keyring-list")?.addEventListener("click", onKeyringClick);
+  $("#btn-diag")?.addEventListener("click", onDiagnose);
+  $("#btn-kb-export")?.addEventListener("click", () => onKbExport(false));
+  $("#btn-kb-file")?.addEventListener("click", () => onKbExport(true));
+  $("#btn-kb-import")?.addEventListener("click", onKbImport);
   $("#btn-lock-enable")?.addEventListener("click", () => onLockAction("enable"));
   $("#btn-lock-unlock")?.addEventListener("click", () => onLockAction("unlock"));
   $("#btn-lock-disable")?.addEventListener("click", () => onLockAction("disable"));
@@ -602,6 +610,7 @@ function populateModelSelect() {
 }
 
 function renderModelsPanel() {
+  renderDiagnostics();
   const sel = $("#ai-model");
   const status = getAIStatus();
   const models = getFreeModels();
@@ -754,11 +763,128 @@ function bindAIPersistence() {
   // localStorage empty (browser wiped it)? recover from the IndexedDB mirror.
   if (!isAIAvailable()) restoreAIProviderAsync().then(async (ok) => { if (ok) refresh(); else if ((await getKeyProtectionState()) === "locked") { refresh(); showToast(LOCK_TXT[getLang() === "ar" ? "ar" : "en"].locktoast); } }).catch(() => {});
   requestPersistentStorage();
+  renderDiagnostics();
+  try { const ia = detectInAppBrowser(); if (ia.detected) showToast(DG[getLang() === "ar" ? "ar" : "en"].inAppToast.replace("{n}", ia.name), true); } catch (_) {}
   const resync = () => { syncAIConfig().then((changed) => { if (changed) refresh(); }).catch(() => {}); };
   window.addEventListener("pageshow", resync);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") resync(); });
   window.addEventListener("focus", resync);
   window.addEventListener("storage", (e) => { if (e.key === "trustai_ai_cfg" && followSavedAIConfig()) refresh(); });
+}
+
+// ── Key storage health + encrypted backup ────────────────────────────────
+const DG = {
+  ar: {
+    title: "حالة تخزين المفاتيح والنسخ الاحتياطي", hint: "إن اختفى مفتاح فهذه الأداة تخبرك بالسبب بدل التخمين، والنسخة الاحتياطية تعيد كل مفاتيحك بلصق واحد.", btn: "افحص حالة التخزين",
+    ok: "✅ كل شيء سليم: المفاتيح محفوظة ولا شيء يحذفها إلا أنت.",
+    vInApp: "⚠ السبب الأرجح: تفتح التطبيق داخل متصفح مدمج ({n}). هذه المتصفحات لا تحفظ بيانات الموقع بشكل موثوق. افتح الرابط في Chrome، أو ثبّته على الشاشة الرئيسية.",
+    vNoStorage: "⛔ المتصفح يمنع تخزين البيانات (وضع التصفح الخاص أو منع الكوكيز). لن تُحفظ المفاتيح بهذه الحال.",
+    vWiped: "⚠ لا يوجد أي سجل سابق ولا مفاتيح، وهذا يعني أن بيانات الموقع كلها مُسحت من خارج التطبيق (إعدادات Chrome، أو تطبيق تنظيف/توفير ذاكرة، أو حذف البيانات). التطبيق لم يحذف شيئًا.",
+    vByYou: "ℹ المفتاح غير موجود لأنه حُذف بالضغط على «حذف» أو «إلغاء التفعيل» (مسجّل أدناه).",
+    ver: "نسخة التطبيق: v{v}", mode: { app: "يعمل كتطبيق مثبّت ✓", tab: "يعمل داخل المتصفح (تثبيته على الشاشة الرئيسية يحميه أكثر)" },
+    storageOk: "التخزين يعمل ✓", storageBad: "التخزين محجوب ⛔",
+    persisted: { true: "التخزين محمي من المسح التلقائي ✓", false: "التخزين غير مضمون: قد يمسحه المتصفح عند ضيق المساحة أو التنظيف ⚠", null: "حماية التخزين من المسح: غير معروفة" },
+    saved: "محفوظ في: localStorage {a} · IndexedDB {b} · عدد المفاتيح: {n}", active: "المفتاح المفعّل: {p} (…{t})", noActive: "لا يوجد مفتاح مفعّل الآن",
+    prot: { none: "الحماية بكلمة سر: لا مفتاح بعد", unsaved: "الحماية بكلمة سر: غير محفوظ بعد", plain: "الحماية بكلمة سر: غير مفعّلة", locked: "🔒 المفتاح مقفل بكلمة سر (أدخلها لفتحه)", unlocked: "🔓 المفتاح مفتوح (محمي بكلمة سر)" },
+    origin: "العنوان: {o} — المفاتيح تُحفظ لكل عنوان، فإن فتحت التطبيق من رابط آخر فلن تظهر.", first: "أول استخدام على هذا المتصفح: {d} — إن كان حديثًا وأنت تستخدمه منذ مدة فقد مُسحت بياناته.", log: "آخر الأحداث:",
+    ev: { saved: "حُفظ المفتاح", restored: "استُرجع المفتاح عند الفتح", restore_failed: "فشل استرجاع المفتاح", recovered_from_indexeddb: "استُرجع من النسخة الثانية (IndexedDB)", start_nothing_saved: "عند الفتح: لا يوجد مفتاح محفوظ", start_locked: "عند الفتح: المفتاح مقفل بكلمة سر", disconnected_by_you: "ألغيتَ التفعيل بيدك", deleted_by_you: "حذفتَ مفتاحًا بيدك", backup_exported: "صُدّرت نسخة احتياطية", backup_imported: "استُوردت نسخة احتياطية", record_discarded: "أُسقط سجل تالف", save_failed: "تعذّر الحفظ" },
+    bTitle: "نسخة احتياطية مشفّرة لكل المفاتيح", bHint: "اختر كلمة سر (8 أحرف فأكثر). ينتج نص واحد مشفّر؛ احفظه في ملاحظاتك أو رسائلك المحفوظة. إن مُسحت بيانات المتصفح ألصقه هنا مع كلمة السر فتعود كل المفاتيح. كلمة السر لا تُحفظ ولا يمكن استرجاعها.",
+    bPass: "كلمة سر النسخة الاحتياطية", bText: "نص النسخة الاحتياطية (للتصدير يُملأ تلقائيًا، وللاستيراد الصقه هنا)", bExport: "تصدير ونسخ", bFile: "حفظ كملف", bImport: "استيراد",
+    bOkExport: "تم إنشاء النسخة ({n} مفاتيح) ونُسخ النص. احفظه الآن في مكان آمن.", bOkImport: "تمت الاستعادة: {n} مفاتيح، والمفتاح المفعّل: {p}.",
+    bErr: { short: "كلمة السر قصيرة: 8 أحرف على الأقل.", locked: "افتح قفل المفاتيح بكلمة السر أولًا.", empty: "لا توجد مفاتيح لتصديرها/استيرادها.", nocrypto: "المتصفح لا يدعم التشفير المطلوب.", format: "هذا ليس نص نسخة احتياطية صالحًا.", wrong: "كلمة السر خاطئة أو النص تالف." },
+    inAppToast: "أنت داخل متصفح مدمج ({n}): قد لا تُحفظ المفاتيح. افتح الرابط في Chrome.",
+  },
+  en: {
+    title: "Key storage health & encrypted backup", hint: "If a key disappears this tells you WHY instead of guessing, and the backup restores all your keys with one paste.", btn: "Check storage health",
+    ok: "✅ All good: the keys are saved and nothing deletes them except you.",
+    vInApp: "⚠ Most likely cause: you are in an in-app browser ({n}). These do not keep site data reliably. Open the link in Chrome, or install the app to your home screen.",
+    vNoStorage: "⛔ The browser blocks data storage (private mode or cookies blocked). Keys cannot be saved like this.",
+    vWiped: "⚠ There is no earlier record and no keys, which means ALL site data was erased from outside the app (Chrome settings, a cleaner/battery-saver app, or clearing data). The app deleted nothing.",
+    vByYou: "ℹ The key is gone because it was deleted with “Delete” or “Disconnect” (logged below).",
+    ver: "App version: v{v}", mode: { app: "Running as an installed app ✓", tab: "Running in the browser (installing to the home screen protects it more)" },
+    storageOk: "Storage works ✓", storageBad: "Storage is blocked ⛔",
+    persisted: { true: "Storage is protected from automatic clearing ✓", false: "Storage is not guaranteed: the browser may clear it when space is low or on cleaning ⚠", null: "Protection from clearing: unknown" },
+    saved: "Saved in: localStorage {a} · IndexedDB {b} · keys: {n}", active: "Active key: {p} (…{t})", noActive: "No active key right now",
+    prot: { none: "Passphrase lock: no key yet", unsaved: "Passphrase lock: not saved yet", plain: "Passphrase lock: off", locked: "🔒 Key is locked with a passphrase (enter it to unlock)", unlocked: "🔓 Key is unlocked (passphrase-protected)" },
+    origin: "Address: {o} — keys are saved per address; opening the app from another link will not show them.", first: "First use in this browser: {d} — if that is recent but you have used it for a while, its data was erased.", log: "Recent events:",
+    ev: { saved: "Key saved", restored: "Key restored on open", restore_failed: "Key restore failed", recovered_from_indexeddb: "Recovered from the second copy (IndexedDB)", start_nothing_saved: "On open: no saved key", start_locked: "On open: key is passphrase-locked", disconnected_by_you: "You disconnected the key", deleted_by_you: "You deleted a key", backup_exported: "Backup exported", backup_imported: "Backup imported", record_discarded: "A corrupt record was discarded", save_failed: "Saving failed" },
+    bTitle: "Encrypted backup of all keys", bHint: "Choose a passphrase (8+ characters). It produces one encrypted text; keep it in your notes or saved messages. If the browser's data is erased, paste it here with the passphrase and all keys return. The passphrase is never stored and cannot be recovered.",
+    bPass: "Backup passphrase", bText: "Backup text (filled automatically on export; paste it here to import)", bExport: "Export & copy", bFile: "Save as file", bImport: "Import",
+    bOkExport: "Backup created ({n} keys) and copied. Store it somewhere safe now.", bOkImport: "Restored: {n} keys; active key: {p}.",
+    bErr: { short: "Passphrase too short: 8 characters minimum.", locked: "Unlock the key lock with its passphrase first.", empty: "There are no keys to export/import.", nocrypto: "This browser lacks the required encryption.", format: "That is not a valid backup text.", wrong: "Wrong passphrase or damaged text." },
+    inAppToast: "You are in an in-app browser ({n}): keys may not be saved. Open the link in Chrome.",
+  },
+};
+
+async function renderDiagnostics() {
+  const box = $("#mp-diag");
+  if (!box) return;
+  const L = DG[getLang() === "ar" ? "ar" : "en"];
+  $("#mp-diag-title").textContent = L.title;
+  $("#mp-diag-hint").textContent = L.hint;
+  $("#btn-diag").textContent = L.btn;
+  $("#mp-backup-title").textContent = L.bTitle;
+  $("#mp-backup-hint").textContent = L.bHint;
+  $("#kb-pass").placeholder = L.bPass;
+  $("#kb-text").placeholder = L.bText;
+  $("#btn-kb-export").textContent = L.bExport;
+  $("#btn-kb-file").textContent = L.bFile;
+  $("#btn-kb-import").textContent = L.bImport;
+}
+
+async function onDiagnose() {
+  const L = DG[getLang() === "ar" ? "ar" : "en"];
+  const d = await getKeyDiagnostics();
+  const fill = (s, o) => s.replace(/\{(\w+)\}/g, (_, k) => o[k] ?? "");
+  const verdict = !d.storage.localStorageWorks ? L.vNoStorage
+    : d.inApp.detected ? fill(L.vInApp, { n: d.inApp.name })
+    : d.saved.keys === 0 && !d.saved.localStorage && !d.log.some((x) => x.e === "deleted_by_you" || x.e === "disconnected_by_you") && d.log.filter((x) => x.e !== "start_nothing_saved").length === 0 ? L.vWiped
+    : d.saved.keys === 0 && d.log.some((x) => x.e === "deleted_by_you" || x.e === "disconnected_by_you") ? L.vByYou
+    : L.ok;
+  const lines = [
+    verdict,
+    fill(L.ver, { v: d.version || APP_VERSION }),
+    d.standalone ? L.mode.app : L.mode.tab,
+    d.storage.localStorageWorks ? L.storageOk : L.storageBad,
+    L.persisted[String(d.storage.persisted)],
+    fill(L.saved, { a: d.saved.localStorage ? "✓" : "✗", b: d.saved.indexedDB ? "✓" : "✗", n: d.saved.keys }),
+    d.active ? fill(L.active, { p: PROVIDERS[d.active.provider]?.name || d.active.provider, t: d.active.tail }) : L.noActive,
+    L.prot[d.protection] || "",
+    fill(L.origin, { o: d.origin }),
+    d.firstSeen ? fill(L.first, { d: d.firstSeen }) : "",
+  ].filter(Boolean);
+  const log = d.log.length ? `<li class="muted"><strong>${escapeHtml(L.log)}</strong><ul>${d.log.slice().reverse().map((x) => `<li dir="auto">${escapeHtml(x.t.replace("T", " ").replace("Z", ""))} — ${escapeHtml(L.ev[x.e] || x.e)}${x.d ? ` (${escapeHtml(x.d)})` : ""}</li>`).join("")}</ul></li>` : "";
+  $("#mp-diag-list").innerHTML = lines.map((t, i) => `<li${i === 0 ? ' class="diag-verdict"' : ""}>${escapeHtml(t)}</li>`).join("") + log;
+}
+
+function kbMsg(text, ok) {
+  const el = $("#kb-msg");
+  if (!el) return;
+  el.textContent = text;
+  el.className = "ai-test-result " + (ok ? "ok" : "bad");
+}
+
+async function onKbExport(thenFile = false) {
+  const L = DG[getLang() === "ar" ? "ar" : "en"];
+  const r = await exportKeyBackup($("#kb-pass")?.value || "");
+  if (!r.ok) { kbMsg(L.bErr[r.reason] || L.bErr.wrong, false); return; }
+  $("#kb-text").value = r.text;
+  if (thenFile) {
+    try { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([r.text], { type: "text/plain" })); a.download = "trust-ai-keys-backup.txt"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); } catch (_) {}
+  } else {
+    try { await navigator.clipboard.writeText(r.text); } catch (_) {}
+  }
+  kbMsg(L.bOkExport.replace("{n}", r.count), true);
+  onDiagnose();
+}
+
+async function onKbImport() {
+  const L = DG[getLang() === "ar" ? "ar" : "en"];
+  const r = await importKeyBackup($("#kb-text")?.value || "", $("#kb-pass")?.value || "");
+  if (!r.ok) { kbMsg(L.bErr[r.reason] || L.bErr.wrong, false); return; }
+  $("#kb-pass").value = ""; $("#kb-text").value = "";
+  kbMsg(L.bOkImport.replace("{n}", r.count).replace("{p}", PROVIDERS[r.active]?.name || r.active), true);
+  syncModelSelectToStatus(); updateAIStatusUI(); renderModelsPanel(); renderKeyring(); updateLockUI(); onDiagnose();
 }
 
 // ── Saved keys (one per provider) ────────────────────────────────────────
